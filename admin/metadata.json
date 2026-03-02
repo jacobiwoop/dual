@@ -1,0 +1,5 @@
+{
+  "name": "Basic Instinct Admin",
+  "description": "Admin dashboard for Basic Instinct platform supervision",
+  "requestFramePermissions": []
+}

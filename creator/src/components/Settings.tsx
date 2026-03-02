@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Bell, Shield, CreditCard, MessageSquare, Zap, ChevronRight, ToggleLeft, ToggleRight, Plus, Trash2, Edit2, UserX } from 'lucide-react';
+import { Bell, Shield, CreditCard, MessageSquare, Zap, ChevronRight, ToggleLeft, ToggleRight, Plus, Trash2, Edit2, UserX, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { AutoMessageModal } from '@/components/AutoMessageModal';
 import { CreateShowModal } from '@/components/CreateShowModal';
 import { WithdrawModal } from '@/components/WithdrawModal';
@@ -13,6 +14,7 @@ export function Settings() {
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Confidentialité', icon: Shield },
     { id: 'payments', label: 'Paiements', icon: CreditCard },
+    { id: 'account', label: 'Compte', icon: UserX },
   ];
 
   const [isAutoMsgModalOpen, setIsAutoMsgModalOpen] = useState(false);
@@ -48,6 +50,7 @@ export function Settings() {
         {activeSection === 'notifications' && <NotificationsSettings />}
         {activeSection === 'privacy' && <PrivacySettings />}
         {activeSection === 'payments' && <PaymentsSettings onWithdraw={() => setIsWithdrawModalOpen(true)} />}
+        {activeSection === 'account' && <AccountSettings />}
       </div>
 
       {/* Modals */}
@@ -273,6 +276,61 @@ function PaymentsSettings({ onWithdraw }: { onWithdraw: () => void }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountSettings() {
+  const { logout, user } = useAuth();
+
+  const handleLogout = () => {
+    if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+      logout();
+      window.location.reload();
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-6 space-y-6 shadow-sm">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Gestion du compte</h2>
+        <p className="text-sm text-gray-500">Informations et actions sur votre compte</p>
+      </div>
+
+      {/* Informations utilisateur */}
+      <div className="border-t pt-6 space-y-4">
+        <div>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</label>
+          <p className="mt-1 text-gray-900 font-medium">{user?.email}</p>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Nom d'utilisateur</label>
+          <p className="mt-1 text-gray-900 font-medium">{user?.username || 'Non défini'}</p>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Type de compte</label>
+          <p className="mt-1">
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+              user?.role === 'CREATOR' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+            }`}>
+              {user?.role === 'CREATOR' ? 'Créateur' : 'Client'}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {/* Actions dangereuses */}
+      <div className="border-t pt-6 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-700">Actions</h3>
+        
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-semibold group"
+        >
+          <LogOut size={18} className="group-hover:translate-x-[-2px] transition-transform" />
+          Se déconnecter
+        </button>
       </div>
     </div>
   );

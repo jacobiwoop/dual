@@ -1,6 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
   User,
@@ -11,6 +12,7 @@ import {
   Bell,
   Settings,
   Euro,
+  LogOut
 } from 'lucide-react';
 
 export type NavItem = {
@@ -21,8 +23,6 @@ export type NavItem = {
 };
 
 interface SidebarLeftProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
   unreadMessages: number;
   unreadNotifications: number;
   balance: number;
@@ -33,8 +33,6 @@ interface SidebarLeftProps {
 }
 
 export function SidebarLeft({
-  activeTab,
-  onTabChange,
   unreadMessages,
   unreadNotifications,
   balance,
@@ -42,6 +40,10 @@ export function SidebarLeft({
   isOpen = false,
   onClose,
 }: SidebarLeftProps) {
+  const location = useLocation();
+  const currentPath = location.pathname;
+  const activeTab = currentPath === '/' ? 'dashboard' : currentPath.substring(1).split('/')[0];
+
   const navItems: NavItem[] = [
     { id: 'dashboard',     label: 'Dashboard',    icon: Home },
     { id: 'profile',      label: 'Profil',        icon: User },
@@ -52,11 +54,6 @@ export function SidebarLeft({
     { id: 'notifications',label: 'Notifications',  icon: Bell, badge: unreadNotifications },
     { id: 'settings',     label: 'Paramètres',    icon: Settings },
   ];
-
-  const handleNav = (id: string) => {
-    onTabChange(id);
-    onClose?.();
-  };
 
   const sidebar = (
     <div className="w-[240px] h-full bg-[#1A1A1A] flex flex-col items-stretch py-6 shadow-xl relative text-left">
@@ -83,9 +80,10 @@ export function SidebarLeft({
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
-            <button
+            <Link
               key={item.id}
-              onClick={() => handleNav(item.id)}
+              to={item.id === 'dashboard' ? '/' : `/${item.id}`}
+              onClick={onClose}
               className={cn(
                 "relative group w-full h-12 rounded-xl flex items-center px-4 transition-all duration-200",
                 isActive
@@ -102,7 +100,7 @@ export function SidebarLeft({
                   {item.badge}
                 </span>
               ) : null}
-            </button>
+            </Link>
           );
         })}
       </nav>
@@ -115,17 +113,31 @@ export function SidebarLeft({
           <p className="text-xl font-bold text-emerald-400">{balance.toLocaleString('fr-FR')} €</p>
         </div>
 
-        {/* Profile Card */}
-        <button
-          onClick={() => handleNav('settings')}
-          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-gray-800 text-left"
-        >
-          <img src={userAvatar} alt="Profile" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">Mon Espace</p>
-            <p className="text-xs text-gray-500 truncate">Créateur actif</p>
-          </div>
-        </button>
+        {/* Profile Card & Logout */}
+        <div className="flex items-center gap-2">
+          <Link
+            to="/settings"
+            onClick={onClose}
+            className="flex-1 flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-gray-800 text-left"
+          >
+            <img src={userAvatar} alt="Profile" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">Mon Espace</p>
+              <p className="text-xs text-gray-500 truncate">Créateur actif</p>
+            </div>
+          </Link>
+          <button
+            onClick={() => {
+              localStorage.removeItem('creator_token');
+              localStorage.removeItem('creator_user');
+              window.location.href = '/';
+            }}
+            className="p-3 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-colors shrink-0"
+            title="Se déconnecter"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </div>
     </div>
   );

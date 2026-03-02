@@ -1,0 +1,19 @@
+import { Router } from 'express';
+import { mediaController } from '../../controllers/creator/media.controller';
+import { validateBody } from '../../middleware/validate';
+import { uploadLimiter } from '../../middleware/rateLimiter';
+import { requestUploadUrlSchema, confirmUploadSchema } from '../../schemas/media.schemas';
+
+const router = Router();
+
+// Upload flow
+router.post('/upload-url', uploadLimiter, validateBody(requestUploadUrlSchema), mediaController.requestUploadUrl);
+router.post('/confirm', uploadLimiter, validateBody(confirmUploadSchema), mediaController.confirmUpload);
+
+// Access
+router.get('/:id/url', mediaController.getMediaUrl);
+
+// Delete
+router.delete('/:id', mediaController.deleteMedia);
+
+export default router;
