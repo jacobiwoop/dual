@@ -7,7 +7,7 @@ import {
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type ProfileTab = 'details' | 'game' | 'pictures' | 'friends';
-interface OutletContext { openChat: (id: number) => void; activeChatId: number | null; }
+interface OutletContext { openChat: (id: string | number) => void; activeChatId: string | number | null; }
 
 // ─── Mock Creator ───────────────────────────────────────────────────────────
 const CREATOR = {
@@ -61,6 +61,22 @@ export const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState<ProfileTab>('details');
   const [message,   setMessage]   = useState('');
   const [favorite,  setFavorite]  = useState(false);
+  
+  // Real creator data state
+  const [creatorData, setCreatorData] = useState<any>(null);
+
+  React.useEffect(() => {
+    const fetchCreator = async () => {
+      try {
+        const { default: api } = await import('../services/api');
+        const res = await api.get(`/api/client/creators/${username}`);
+        setCreatorData(res.data.creator);
+      } catch (err) {
+        console.error("Erreur lors de la récupération du créateur", err);
+      }
+    };
+    if (username) fetchCreator();
+  }, [username]);
 
   const tabs: { id: ProfileTab; label: string }[] = [
     { id: 'details',  label: 'Details' },
@@ -70,7 +86,18 @@ export const ProfilePage = () => {
   ];
 
   const actionBtns = [
-    { icon: <MessageCircle size={17} />, label: `Chat with ${CREATOR.name.split(' ')[0]}`, action: () => openChat(CREATOR.id), accent: 'text-pink-500' },
+    { 
+      icon: <MessageCircle size={17} />, 
+      label: `Chat with ${creatorData?.displayName?.split(' ')[0] || CREATOR.name.split(' ')[0]}`, 
+      action: () => {
+        if (creatorData?.id) {
+          openChat(creatorData.id);
+        } else {
+          alert("Ce profil est un profil de démonstration (Mock). Vous ne pouvez chatter qu'avec un vrai profil enregistré en base de données, comme 'bella_creator'.");
+        }
+      }, 
+      accent: 'text-pink-500' 
+    },
     { icon: <Smile         size={17} />, label: 'Smileys',   action: () => {}, accent: 'text-yellow-500' },
     { icon: <span className="text-base leading-none">🎭</span>, label: 'Sexicons', action: () => {}, accent: '' },
     { icon: <Heart         size={17} />, label: 'Free Kiss',  action: () => {}, accent: 'text-red-500' },

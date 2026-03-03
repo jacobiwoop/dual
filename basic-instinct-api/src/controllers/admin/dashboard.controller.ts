@@ -35,9 +35,8 @@ export const dashboardController = {
       prisma.transaction.aggregate({
         where: {
           type: { in: ['credit_purchase', 'subscription', 'tip', 'media', 'gallery'] },
-          status: 'completed',
         },
-        _sum: { amountEur: true },
+        _sum: { amountCoins: true },
       }),
 
       // Revenus 30 jours
@@ -47,7 +46,7 @@ export const dashboardController = {
           status: 'completed',
           createdAt: { gte: last30Days },
         },
-        _sum: { amountEur: true },
+        _sum: { amountCoins: true },
       }),
 
       // Commission totale
@@ -55,7 +54,7 @@ export const dashboardController = {
         where: {
           status: 'completed',
         },
-        _sum: { commissionEur: true },
+        _sum: { commissionCoins: true },
       }),
 
       // Nouveaux créateurs (7 jours)
@@ -94,9 +93,9 @@ export const dashboardController = {
         active: activeSubscriptions,
       },
       revenue: {
-        total: totalRevenue._sum.amountEur || 0,
-        last30Days: revenueLast30Days._sum.amountEur || 0,
-        totalCommission: totalCommission._sum.commissionEur || 0,
+        total: totalRevenue._sum.amountCoins || 0,
+        last30Days: revenueLast30Days._sum.amountCoins || 0,
+        totalCommission: totalCommission._sum.commissionCoins || 0,
       },
       transactions: {
         last30Days: transactionsLast30Days,

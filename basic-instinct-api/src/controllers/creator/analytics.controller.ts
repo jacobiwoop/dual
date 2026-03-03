@@ -28,7 +28,7 @@ export const analyticsController = {
       prisma.user.findUnique({
         where: { id: creatorId },
         select: {
-          balance: true,
+          coinBalance: true,
           totalEarned: true,
           subscriptionPrice: true,
         },
@@ -81,7 +81,7 @@ export const analyticsController = {
           type: { in: ['subscription', 'tip', 'media', 'gallery', 'show'] },
           status: 'completed',
         },
-        _sum: { amountEur: true },
+        _sum: { amountCoins: true },
       }),
 
       // Revenus 30 derniers jours
@@ -92,14 +92,14 @@ export const analyticsController = {
           status: 'completed',
           createdAt: { gte: last30Days },
         },
-        _sum: { amountEur: true },
+        _sum: { amountCoins: true },
       }),
     ]);
 
     res.json({
-      balance: creator?.balance || 0,
+      balance: creator?.coinBalance || 0,
       totalEarned: creator?.totalEarned || 0,
-      earningsLast30Days: earningsLast30Days._sum.amountEur || 0,
+      earningsLast30Days: earningsLast30Days._sum.amountCoins || 0,
       subscriptionPrice: creator?.subscriptionPrice || 0,
       subscribers: {
         total: totalSubscribers,
@@ -123,7 +123,7 @@ export const analyticsController = {
 
     const { period = '30' } = req.query; // 7, 30, 90 jours
     const creatorId = req.user.userId;
-    const days = Number(period);
+    const days = parseInt(String(period).replace(/\D/g, ''), 10) || 30;
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Récupérer toutes les transactions de la période
@@ -135,7 +135,7 @@ export const analyticsController = {
         createdAt: { gte: startDate },
       },
       select: {
-        amountEur: true,
+        amountCoins: true,
         type: true,
         createdAt: true,
       },
@@ -156,8 +156,8 @@ export const analyticsController = {
         };
       }
 
-      revenueByDay[dateKey].total += tx.amountEur || 0;
-      revenueByDay[dateKey].byType[tx.type] = (revenueByDay[dateKey].byType[tx.type] || 0) + (tx.amountEur || 0);
+      revenueByDay[dateKey].total += tx.amountCoins || 0;
+      revenueByDay[dateKey].byType[tx.type] = (revenueByDay[dateKey].byType[tx.type] || 0) + (tx.amountCoins || 0);
     });
 
     const chartData = Object.values(revenueByDay);
@@ -177,7 +177,7 @@ export const analyticsController = {
 
     const { period = '30' } = req.query;
     const creatorId = req.user.userId;
-    const days = Number(period);
+    const days = parseInt(String(period).replace(/\D/g, ''), 10) || 30;
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Récupérer les abonnements de la période

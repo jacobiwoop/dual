@@ -3,10 +3,12 @@ import cors from 'cors';
 import 'express-async-errors';
 import dotenv from 'dotenv';
 import pinoHttp from 'pino-http';
+import { createServer } from 'http';
 import { prisma } from './lib/prisma';
 import logger from './lib/logger';
 import { apiLimiter } from './middleware/rateLimiter';
 import { mediaWorker } from './lib/queue'; // Import worker to start it
+import setupSocketIO from './lib/socket'; // Import Socket.io setup
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -19,8 +21,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Créer le serveur HTTP (nécessaire pour Socket.io)
+const httpServer = createServer(app);
+
+// Initialiser Socket.io
+const io = setupSocketIO(httpServer);
+
 // CORS configuration
-const corsOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'];
+const corsOrigins = process.env.CORS_ORIGIN?.split(',') || [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:3002'
+];
 app.use(cors({
   origin: corsOrigins,
   credentials: true,
@@ -33,8 +45,8 @@ app.use(express.urlencoded({ extended: true }));
 // Logging
 app.use(pinoHttp({ logger }));
 
-// Rate limiting global (DISABLED FOR TESTING)
-// app.use('/api/', apiLimiter);
+// Rate limiting global
+app.use('/api/', apiLimiter);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -91,20 +103,22 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Start server
-app.listen(PORT, () => {
+// Start server with Socket.io
+httpServer.listen(PORT, () => {
   logger.info(`
 ╔═══════════════════════════════════════════════════════╗
 ║                                                       ║
 ║   🚀 Basic Instinct API                              ║
 ║                                                       ║
-║   🌐 Server running on port ${PORT}                     ║
-║   📍 http://localhost:${PORT}                           ║
+║   🌐 HTTP Server: http://localhost:${PORT}              ║
+║   ⚡ WebSocket: ws://localhost:${PORT}                  ║
 ║   🏥 Health: http://localhost:${PORT}/health            ║
 ║                                                       ║
 ║   Environment: ${process.env.NODE_ENV || 'development'}                           ║
 ║   📝 Logging: enabled                                ║
-║   🔒 Rate limiting: enabled                          ║
+║   🔒 Rate limiting: ${process.env.NODE_ENV === 'production' ? 'enabled' : 'enabled (100 req/min)'}                          ║
+║   💬 Socket.io: enabled                              ║
+║   🔧 BullMQ Worker: enabled                          ║
 ║                                                       ║
 ╚═══════════════════════════════════════════════════════╝
   `);

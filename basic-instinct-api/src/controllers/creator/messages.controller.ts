@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import redis from '../../lib/redis';
 
 export const messagesController = {
   // GET /api/creator/conversations - Liste des conversations
@@ -14,9 +15,7 @@ export const messagesController = {
     // Récupérer toutes les conversations du créateur
     const conversations = await prisma.conversation.findMany({
       where: {
-        participants: {
-          some: { userId: creatorId as string },
-        },
+        creatorId: creatorId as string,
       },
       include: {
         participants: {
@@ -49,8 +48,8 @@ export const messagesController = {
       orderBy: { updatedAt: 'desc' },
     });
 
-    // Formatter les conversations
-    const formattedConversations = conversations.map((conv) => {
+    // Formatter les conversations (en parallèle pour la présence Redis)
+    const formattedConversations = await Promise.all(conversations.map(async (conv) => {
       const otherParticipant = conv.participants.find((p) => p.userId !== creatorId);
       const lastMessage = conv.messages[0];
       
@@ -59,14 +58,22 @@ export const messagesController = {
         (m) => !m.isRead && m.senderId !== creatorId
       ).length;
 
+      // Vérifier la présence Redis
+      const clientId = conv.clientId || otherParticipant?.user?.id || null;
+      const isOnline = clientId
+        ? (await redis.sismember('presence:online', clientId)) === 1
+        : false;
+
       return {
         id: conv.id,
+        clientId,
         client: otherParticipant?.user || null,
+        isOnline,
         lastMessage: lastMessage || null,
         unreadCount,
         updatedAt: conv.updatedAt,
       };
-    });
+    }));
 
     res.json({
       conversations: formattedConversations,
@@ -87,11 +94,8 @@ export const messagesController = {
     // Trouver la conversation entre le créateur et le client
     const conversation = await prisma.conversation.findFirst({
       where: {
-        participants: {
-          every: {
-            OR: [{ userId: creatorId as string }, { userId: clientId as string }],
-          },
-        },
+        creatorId: creatorId as string,
+        clientId: clientId as string,
       },
       include: {
         messages: {
@@ -164,11 +168,8 @@ export const messagesController = {
     // Trouver ou créer la conversation
     let conversation = await prisma.conversation.findFirst({
       where: {
-        participants: {
-          every: {
-            OR: [{ userId: creatorId as string }, { userId: clientId as string }],
-          },
-        },
+        creatorId: creatorId as string,
+        clientId: clientId as string,
       },
     });
 
@@ -176,6 +177,8 @@ export const messagesController = {
       // Créer nouvelle conversation
       conversation = await prisma.conversation.create({
         data: {
+          creatorId: creatorId as string,
+          clientId: clientId as string,
           participants: {
             create: [
               { userId: creatorId as string },
@@ -191,6 +194,7 @@ export const messagesController = {
       data: {
         conversationId: conversation.id,
         senderId: creatorId as string,
+        recipientId: clientId as string,
         content: content || null,
         isPaid: isPaid || false,
         price: price || null,
@@ -288,8 +292,7 @@ export const messagesController = {
         id: true,
         username: true,
         displayName: true,
-        avatarUrl: true,
-        balanceCredits: true,
+        coinBalance: true,
         totalSpent: true,
         createdAt: true,
       },

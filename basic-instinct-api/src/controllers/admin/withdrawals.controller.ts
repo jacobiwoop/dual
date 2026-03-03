@@ -21,8 +21,7 @@ export const withdrawalsController = {
             username: true,
             displayName: true,
             email: true,
-            iban: true,
-            balance: true,
+            coinBalance: true,
           },
         },
       },
@@ -54,8 +53,7 @@ export const withdrawalsController = {
             displayName: true,
             email: true,
             iban: true,
-            ibanVerified: true,
-            balance: true,
+            coinBalance: true,
             totalEarned: true,
             kycStatus: true,
           },
@@ -88,11 +86,11 @@ export const withdrawalsController = {
     }
 
     // Vérifier que le créateur a toujours le solde
-    if (withdrawal.creator.balance < withdrawal.amountEur) {
+    if (withdrawal.creator.coinBalance < withdrawal.amountCoins) {
       return res.status(400).json({
         error: 'Solde insuffisant',
-        required: withdrawal.amountEur,
-        available: withdrawal.creator.balance,
+        required: withdrawal.amountCoins,
+        available: withdrawal.creator.coinBalance,
       });
     }
 
@@ -100,7 +98,7 @@ export const withdrawalsController = {
     await prisma.user.update({
       where: { id: withdrawal.creatorId },
       data: {
-        balance: { decrement: withdrawal.amountEur },
+        coinBalance: { decrement: withdrawal.amountCoins },
       },
     });
 
@@ -120,7 +118,7 @@ export const withdrawalsController = {
       data: {
         userId: withdrawal.creatorId,
         type: 'withdrawal',
-        amountEur: withdrawal.netEur,
+        amountCoins: withdrawal.amountCoins,
         status: 'completed',
         referenceId: withdrawal.id,
       },

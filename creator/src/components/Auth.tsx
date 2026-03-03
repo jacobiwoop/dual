@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, Activity } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 export function Auth() {
+  const { login, register, error: authError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,24 +19,19 @@ export function Auth() {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const payload = isLogin ? { email, password } : { email, password, username, role: 'CREATOR' };
-
-      const res = await fetch(`http://localhost:3001${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Une erreur est survenue');
+      if (isLogin) {
+        // Login
+        await login(email, password);
+      } else {
+        // Register
+        await register({
+          email,
+          password,
+          username,
+          displayName: displayName || username,
+        });
       }
-
-      // 1. Sauvegarder le token via le context (qui s'occupe du localStorage et du set state global)
-      login(data.token, data.user);
-
+      // Success - AuthContext gère la redirection
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -60,10 +57,10 @@ export function Auth() {
         </div>
 
         {/* Error Message */}
-        {error && (
+        {(error || authError) && (
           <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm flex items-center gap-2 animate-in fade-in">
             <Activity size={16} />
-            {error}
+            {error || authError}
           </div>
         )}
 

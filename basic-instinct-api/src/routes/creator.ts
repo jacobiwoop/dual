@@ -4,6 +4,7 @@ import { messagesController } from '../controllers/creator/messages.controller';
 import { libraryController } from '../controllers/creator/library.controller';
 import { profileController } from '../controllers/creator/profile.controller';
 import { analyticsController } from '../controllers/creator/analytics.controller';
+import { creatorPayoutsController } from '../controllers/creator/payouts.controller';
 import { validateBody, validate } from '../middleware/validate';
 import { messageLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { 
@@ -54,6 +55,13 @@ router.get('/profile', profileController.getProfile);
 router.put('/profile', validateBody(updateProfileSchema), profileController.updateProfile);
 router.post('/profile/avatar', uploadLimiter, profileController.updateAvatar);
 router.post('/profile/banner', uploadLimiter, profileController.updateBanner);
+router.put('/profile/payout-settings', creatorPayoutsController.updatePayoutSettings);
+
+// ====================================
+// PAYOUTS (Retraits)
+// ====================================
+router.post('/payouts/request', creatorPayoutsController.requestPayout);
+router.get('/payouts/history', creatorPayoutsController.getPayoutHistory);
 
 // ====================================
 // ANALYTICS & DASHBOARD

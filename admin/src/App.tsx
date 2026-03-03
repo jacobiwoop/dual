@@ -8,6 +8,7 @@ import Clients from './pages/Clients';
 import Moderation from './pages/Moderation';
 import Media from './pages/Media';
 import Transactions from './pages/Transactions';
+import CoinRequests from './pages/CoinRequests';
 import Commissions from './pages/Commissions';
 import Settings from './pages/Settings';
 import Logs from './pages/Logs';
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="moderation" element={<Moderation />} />
           <Route path="media" element={<Media />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="coin-requests" element={<CoinRequests />} />
           <Route path="withdrawals" element={<Withdrawals />} />
           <Route path="commissions" element={<Commissions />} />
           <Route path="settings" element={<Settings />} />

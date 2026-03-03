@@ -7,7 +7,7 @@ import { ChatSidebar } from './components/ChatSidebar';
 
 export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 

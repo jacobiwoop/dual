@@ -11,7 +11,7 @@ export const creditsController = {
     const client = await prisma.user.findUnique({
       where: { id: req.user.userId },
       select: {
-        balanceCredits: true,
+        coinBalance: true,
         totalSpent: true,
       },
     });
@@ -21,7 +21,7 @@ export const creditsController = {
     }
 
     res.json({
-      balanceCredits: client.balanceCredits,
+      balanceCredits: client.coinBalance,
       totalSpent: client.totalSpent,
     });
   },
@@ -58,7 +58,7 @@ export const creditsController = {
     await prisma.user.update({
       where: { id: clientId },
       data: {
-        balanceCredits: { increment: credits },
+        coinBalance: { increment: credits },
       },
     });
 
@@ -67,8 +67,7 @@ export const creditsController = {
       data: {
         userId: clientId,
         type: 'credit_purchase',
-        amountCredits: credits,
-        amountEur: amount,
+        amountCoins: credits,
         status: 'completed',
         paymentMethod,
       },
@@ -79,8 +78,8 @@ export const creditsController = {
       transaction,
       newBalance: (await prisma.user.findUnique({
         where: { id: clientId },
-        select: { balanceCredits: true },
-      }))?.balanceCredits || 0,
+        select: { coinBalance: true },
+      }))?.coinBalance || 0,
       message: `${credits} crédits ajoutés avec succès`,
     });
   },

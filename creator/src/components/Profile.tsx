@@ -1,307 +1,311 @@
-import { useState, useRef } from 'react';
-import { Camera, Edit2, Save, Plus, X } from 'lucide-react';
-import { CURRENT_USER } from '@/data/mockData';
-import { CropModal } from '@/components/CropModal';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Camera, Save, Loader2, Check, AlertCircle, X, Edit2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { profileService, CreatorProfile, UpdateProfilePayload } from '@/services/profile';
+import { cn } from '@/lib/utils';
 
-type PhotoSlot = { src: string | null; id: number };
+function formatCoins(n: number) {
+  return n.toLocaleString('fr-FR') + ' 🪙';
+}
 
 export function Profile() {
-  const [user]           = useState(CURRENT_USER);
-  const [coverSrc, setCoverSrc]   = useState(user.cover);
-  const [profilePhotos, setProfilePhotos] = useState<PhotoSlot[]>([
-    { id: 0, src: user.avatar },
-    { id: 1, src: user.avatar },
-    { id: 2, src: null },
-    { id: 3, src: null },
-  ]);
+  const { user } = useAuth();
 
-  const [cropModal, setCropModal] = useState<{
-    open: boolean;
-    src: string;
-    aspect: '1:1' | '16:9';
-    target: 'cover' | number;
-  }>({ open: false, src: '', aspect: '1:1', target: 'cover' });
+  // ── State ────────────────────────────────────────────────────────────────────
+  const [profile, setProfile] = useState<CreatorProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
+  const [error, setError]   = useState<string | null>(null);
 
-  const coverInputRef   = useRef<HTMLInputElement>(null);
-  const profileInputRef = useRef<HTMLInputElement>(null);
-  const activeSlotRef   = useRef<number>(0);
+  // Form fields
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername]       = useState('');
+  const [bio, setBio]                 = useState('');
+  const [subPrice, setSubPrice]       = useState(0);
 
-  const [bio, setBio]               = useState(user.bio);
-  const [welcome, setWelcome]       = useState(user.welcomeMessage);
-  const [categories, setCategories] = useState<string[]>(user.categories);
-  const [tags, setTags]             = useState<string[]>(user.tags);
-  const [newTag, setNewTag]         = useState('');
+  // Image preview states
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
 
-  const openFilePicker = (target: 'cover' | number) => {
-    if (target === 'cover') coverInputRef.current?.click();
-    else { activeSlotRef.current = target; profileInputRef.current?.click(); }
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Load profile ─────────────────────────────────────────────────────────────
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
+    try {
+      const p = await profileService.getProfile();
+      setProfile(p);
+      setDisplayName(p.displayName ?? '');
+      setUsername(p.username ?? '');
+      setBio(p.bio ?? '');
+      setSubPrice(p.subscriptionPrice ?? 0);
+    } catch {
+      setError('Impossible de charger le profil');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadProfile(); }, [loadProfile]);
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const payload: UpdateProfilePayload = {
+        displayName: displayName || undefined,
+        username: username || undefined,
+        bio: bio || undefined,
+        subscriptionPrice: subPrice,
+      };
+      const updated = await profileService.updateProfile(payload);
+      setProfile(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'profile') => {
+  // ── Avatar upload ─────────────────────────────────────────────────────────────
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const src = ev.target?.result as string;
-      setCropModal({
-        open: true,
-        src,
-        aspect: type === 'cover' ? '16:9' : '1:1',
-        target: type === 'cover' ? 'cover' : activeSlotRef.current,
-      });
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
-  };
 
-  const handleCropComplete = (dataUrl: string) => {
-    if (cropModal.target === 'cover') {
-      setCoverSrc(dataUrl);
-    } else {
-      setProfilePhotos(prev => prev.map(p =>
-        p.id === cropModal.target ? { ...p, src: dataUrl } : p
-      ));
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+    setAvatarUploading(true);
+    setError(null);
+    try {
+      await profileService.uploadAndSetAvatar(file);
+    } catch {
+      setError('Erreur lors de l\'upload de l\'avatar');
+      setAvatarPreview(null);
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
-  const toggleCategory = (cat: string) => {
-    if (categories.includes(cat)) {
-      setCategories(categories.filter(c => c !== cat));
-    } else if (categories.length < 3) {
-      setCategories([...categories, cat]);
+  // ── Banner upload ─────────────────────────────────────────────────────────────
+  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const previewUrl = URL.createObjectURL(file);
+    setBannerPreview(previewUrl);
+    setBannerUploading(true);
+    setError(null);
+    try {
+      await profileService.uploadAndSetBanner(file);
+    } catch {
+      setError('Erreur lors de l\'upload de la bannière');
+      setBannerPreview(null);
+    } finally {
+      setBannerUploading(false);
     }
   };
 
-  const addTag = () => {
-    const t = newTag.trim();
-    if (t && !tags.includes(t)) { setTags([...tags, t]); setNewTag(''); }
-  };
+  const currentAvatar = avatarPreview ?? profile?.avatarUrl ?? user?.avatarUrl;
+  const currentBanner = bannerPreview ?? profile?.bannerUrl;
 
+  // ── Loading state ─────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 size={32} className="animate-spin text-purple-500" />
+      </div>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto pb-24">
-      {/* Hidden file inputs */}
-      <input ref={coverInputRef}   type="file" accept="image/*" className="hidden" onChange={e => handleFileSelected(e, 'cover')} />
-      <input ref={profileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFileSelected(e, 'profile')} />
+    <div className="p-4 md:p-8 max-w-3xl mx-auto pb-24">
+      {/* Hidden inputs */}
+      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+      <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mon Profil</h1>
-        <button className="flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg shadow-gray-900/20 text-sm">
-          <Save size={16} /> Enregistrer
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Mon Profil</h1>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={cn(
+            'flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg',
+            saved
+              ? 'bg-green-600 text-white shadow-green-600/20'
+              : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/20'
+          )}
+        >
+          {saving ? <Loader2 size={15} className="animate-spin" /> : saved ? <Check size={15} /> : <Save size={15} />}
+          {saving ? 'Sauvegarde...' : saved ? 'Sauvegardé !' : 'Enregistrer'}
         </button>
       </div>
 
-      <div className="space-y-6">
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-5 text-sm">
+          <AlertCircle size={16} className="shrink-0" />
+          {error}
+          <button onClick={() => setError(null)} className="ml-auto"><X size={14} /></button>
+        </div>
+      )}
 
-        {/* ── Photos ── */}
-        <section className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
-            <span className="w-8 h-1 bg-purple-500 rounded-full" /> Photos
-          </h2>
+      <div className="space-y-5">
 
-          {/* Cover */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Photo de couverture</label>
-            <div
-              className="relative h-36 md:h-48 w-full rounded-2xl overflow-hidden group bg-gray-100 cursor-pointer"
-              onClick={() => openFilePicker('cover')}
-            >
-              <img src={coverSrc} alt="Cover" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-xl border border-white/40 text-sm font-medium">
-                  <Camera size={16} /> Changer la couverture
-                </span>
+        {/* ── Section : Bannière & Avatar ── */}
+        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Banner */}
+          <div
+            className="relative h-36 md:h-48 w-full bg-gradient-to-br from-purple-100 to-pink-100 cursor-pointer group"
+            onClick={() => bannerInputRef.current?.click()}
+          >
+            {currentBanner ? (
+              <img src={currentBanner} alt="Bannière" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-purple-300">
+                <Camera size={32} />
               </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {bannerUploading ? (
+                <Loader2 size={24} className="text-white animate-spin" />
+              ) : (
+                <span className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-xl border border-white/40 text-sm font-medium">
+                  <Camera size={16} /> Changer la bannière
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Profile photos 4 slots */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Photos de profil (max 4)</label>
-            <div className="grid grid-cols-4 gap-3">
-              {profilePhotos.map(slot => (
-                slot.src ? (
-                  <div
-                    key={slot.id}
-                    className="aspect-square rounded-2xl overflow-hidden relative group cursor-pointer border border-gray-100 shadow-sm"
-                    onClick={() => openFilePicker(slot.id)}
-                  >
-                    <img src={slot.src} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Edit2 size={18} className="text-white" />
-                    </div>
-                  </div>
+          {/* Avatar */}
+          <div className="px-6 pb-6">
+            <div className="flex items-end gap-4 -mt-10 mb-4">
+              <div
+                className="relative w-20 h-20 rounded-2xl border-4 border-white shadow-lg cursor-pointer group shrink-0"
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                {currentAvatar ? (
+                  <img src={currentAvatar} alt="Avatar" className="w-full h-full object-cover rounded-xl" />
                 ) : (
-                  <button
-                    key={slot.id}
-                    onClick={() => openFilePicker(slot.id)}
-                    className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all gap-1"
-                  >
-                    <Plus size={20} />
-                    <span className="text-[10px] font-medium">Ajouter</span>
-                  </button>
-                )
+                  <div className="w-full h-full bg-purple-100 rounded-xl flex items-center justify-center text-purple-400">
+                    <Camera size={20} />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                  {avatarUploading ? (
+                    <Loader2 size={16} className="text-white animate-spin" />
+                  ) : (
+                    <Edit2 size={14} className="text-white" />
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">{displayName || profile?.username || 'Votre nom'}</p>
+                <p className="text-sm text-gray-500">@{username || 'username'}</p>
+              </div>
+            </div>
+
+            {/* Stats rapides */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Solde',         value: formatCoins(profile?.coinBalance ?? 0) },
+                { label: 'Total gagné',   value: formatCoins(profile?.totalEarned ?? 0) },
+                { label: 'Statut KYC',    value: profile?.isVerified ? '✅ Vérifié' : profile?.kycStatus === 'submitted' ? '⏳ En attente' : '⚪ Non soumis' },
+              ].map(stat => (
+                <div key={stat.label} className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
+                  <p className="text-sm font-bold text-gray-900 truncate">{stat.value}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{stat.label}</p>
+                </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── Informations ── */}
-        <section className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
-            <span className="w-8 h-1 bg-blue-500 rounded-full" /> Informations
+        {/* ── Section : Informations ── */}
+        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 md:p-6">
+          <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="w-6 h-1 bg-blue-500 rounded-full" /> Informations
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { label: 'Nom public',        type: 'text',   def: user.displayName,  prefix: undefined },
-              { label: 'Nom d\'utilisateur', type: 'text',   def: user.username.replace('@', ''), prefix: '@' },
-              { label: 'Âge affiché',       type: 'number', def: '24',              prefix: undefined },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{f.label}</label>
-                <div className="relative">
-                  {f.prefix && <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{f.prefix}</span>}
-                  <input
-                    type={f.type}
-                    defaultValue={f.def}
-                    className={`w-full ${f.prefix ? 'pl-7' : 'pl-4'} pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm`}
-                  />
-                </div>
-              </div>
-            ))}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Pays</label>
-              <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all appearance-none text-sm">
-                {['France', 'Belgique', 'Suisse', 'Canada'].map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Bio ── */}
-        <section className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
-            <span className="w-8 h-1 bg-pink-500 rounded-full" /> Bio & Description
-          </h2>
-          <div className="space-y-5">
-            {[
-              { label: "Message d'accueil (public)", val: bio, set: setBio, max: 300, rows: 3 },
-              { label: "Message de bienvenue (nouveaux abonnés)", val: welcome, set: setWelcome, max: 500, rows: 4 },
-            ].map(f => (
-              <div key={f.label}>
-                <div className="flex justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">{f.label}</label>
-                  <span className="text-xs text-gray-400">{f.val.length}/{f.max}</span>
-                </div>
-                <textarea
-                  value={f.val}
-                  onChange={e => f.set(e.target.value)}
-                  maxLength={f.max}
-                  rows={f.rows}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none text-sm"
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Catégories ── */}
-        <section className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
-            <span className="w-8 h-1 bg-orange-500 rounded-full" /> Catégories & Tags
-          </h2>
-
-          <div className="mb-5">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">Catégories (max 3)</label>
-              <span className="text-xs text-gray-400">{categories.length}/3 sélectionnées</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {['Général','BDSM','Fétichisme','Cosplay','Lingerie','Roleplay','Domination','Soft','Latex','Pieds','Lactation','Bbw','Trans','Couples'].map(cat => {
-                const active = categories.includes(cat);
-                const disabled = !active && categories.length >= 3;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => toggleCategory(cat)}
-                    disabled={disabled}
-                    className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all ${
-                      active   ? 'bg-gray-900 text-white border-gray-900' :
-                      disabled ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' :
-                                 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">Tags libres</label>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {tags.map(tag => (
-                <span key={tag} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-100 flex items-center gap-1">
-                  {tag}
-                  <button onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-purple-900 ml-0.5"><X size={12} /></button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom public</label>
               <input
                 type="text"
-                value={newTag}
-                onChange={e => setNewTag(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addTag()}
-                placeholder="Nouveau tag..."
-                className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="Votre nom affiché"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all text-sm"
               />
-              <button onClick={addTag} className="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
-                Ajouter
-              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom d'utilisateur</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
+                  placeholder="username"
+                  className="w-full pl-7 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all text-sm"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">Lettres, chiffres, underscore uniquement</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <input
+                type="email"
+                value={profile?.email ?? ''}
+                disabled
+                className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix d'abonnement (Pièces)</label>
+              <input
+                type="number"
+                value={subPrice}
+                min={0}
+                onChange={e => setSubPrice(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all text-sm"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">0 = gratuit</p>
             </div>
           </div>
         </section>
 
-        {/* ── Physique ── */}
-        <section className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border border-gray-100">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
-            <span className="w-8 h-1 bg-teal-500 rounded-full" />
-            Physique <span className="text-sm font-normal text-gray-400 ml-1">(optionnel)</span>
+        {/* ── Section : Bio ── */}
+        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 md:p-6">
+          <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <span className="w-6 h-1 bg-pink-500 rounded-full" /> Bio
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Taille</label>
-              <input type="text" defaultValue={user.physique?.height} placeholder="165cm"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm" />
+          <div>
+            <div className="flex justify-between mb-1.5">
+              <label className="text-sm font-medium text-gray-700">Description publique</label>
+              <span className="text-xs text-gray-400">{bio.length}/500</span>
             </div>
-            {[
-              { label: 'Cheveux', opts: ['Brune','Blonde','Rousse','Noire','Châtain','Colorée'] },
-              { label: 'Yeux',    opts: ['Verts','Bleus','Marron','Noisette','Gris','Noirs'] },
-              { label: 'Morpho',  opts: ['Mince','Athlétique','Curvy','Petite','BBW'] },
-              { label: 'Tatouages', opts: ['Non','Quelques','Beaucoup'] },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{f.label}</label>
-                <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all appearance-none text-sm">
-                  {f.opts.map(o => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-            ))}
+            <textarea
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="Décris-toi en quelques mots..."
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all resize-none text-sm"
+            />
           </div>
         </section>
 
       </div>
-
-      {/* CropModal */}
-      <CropModal
-        isOpen={cropModal.open}
-        onClose={() => setCropModal(m => ({ ...m, open: false }))}
-        imageSrc={cropModal.src}
-        aspect={cropModal.aspect}
-        onCropComplete={handleCropComplete}
-      />
     </div>
   );
 }

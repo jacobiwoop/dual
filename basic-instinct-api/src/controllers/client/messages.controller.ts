@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import redis from '../../lib/redis';
 
 export const clientMessagesController = {
   // GET /api/client/conversations - Liste des conversations du client
@@ -51,7 +52,7 @@ export const clientMessagesController = {
       orderBy: { updatedAt: 'desc' },
     });
 
-    const formattedConversations = conversations.map((conv) => {
+    const formattedConversations = await Promise.all(conversations.map(async (conv) => {
       const otherParticipant = conv.participants.find((p) => p.userId !== clientId);
       const lastMessage = conv.messages[0];
 
@@ -59,14 +60,22 @@ export const clientMessagesController = {
         (m) => !m.isRead && m.senderId !== clientId
       ).length;
 
+      // Présence Redis
+      const creatorId = otherParticipant?.user?.id;
+      const isOnline = creatorId
+        ? (await redis.sismember('presence:online', creatorId)) === 1
+        : false;
+
       return {
         id: conv.id,
+        creatorId: creatorId || null,
         creator: otherParticipant?.user || null,
+        isOnline,
         lastMessage: lastMessage || null,
         unreadCount,
         updatedAt: conv.updatedAt,
       };
-    });
+    }));
 
     res.json({
       conversations: formattedConversations,
@@ -83,6 +92,15 @@ export const clientMessagesController = {
     const { creatorId } = req.params;
     const { limit = 50, before } = req.query;
     const clientId = req.user.userId;
+
+    const creator = await prisma.user.findUnique({
+      where: { id: creatorId as string, role: 'CREATOR' },
+      select: { id: true, username: true, displayName: true, avatarUrl: true },
+    });
+
+    if (!creator) {
+      return res.status(404).json({ error: 'Créateur non trouvé' });
+    }
 
     const conversation = await prisma.conversation.findFirst({
       where: {
@@ -119,13 +137,19 @@ export const clientMessagesController = {
     });
 
     if (!conversation) {
-      return res.status(404).json({ error: 'Conversation non trouvée' });
+      return res.json({
+        conversationId: null,
+        creator: creator,
+        messages: [],
+        hasMore: false,
+      });
     }
 
     const messages = conversation.messages.reverse();
 
     res.json({
       conversationId: conversation.id,
+      creator: creator,
       messages,
       hasMore: messages.length === Number(limit),
     });
@@ -138,10 +162,10 @@ export const clientMessagesController = {
     }
 
     const { creatorId } = req.params;
-    const { content, tipAmount } = req.body;
+    const { content, tipCoins } = req.body; // Anciennement tipAmount
     const clientId = req.user.userId;
 
-    if (!content && !tipAmount) {
+    if (!content && !tipCoins) {
       return res.status(400).json({ error: 'Message ou tip requis' });
     }
 
@@ -154,18 +178,18 @@ export const clientMessagesController = {
       return res.status(404).json({ error: 'Créateur non trouvé' });
     }
 
-    // Si tip, vérifier les crédits
-    if (tipAmount && tipAmount > 0) {
+    // Si tip, vérifier les crédits (Pièces)
+    if (tipCoins && tipCoins > 0) {
       const client = await prisma.user.findUnique({
         where: { id: clientId },
-        select: { balanceCredits: true },
+        select: { coinBalance: true },
       });
 
-      if (!client || client.balanceCredits < tipAmount) {
+      if (!client || client.coinBalance < tipCoins) {
         return res.status(400).json({
           error: 'Crédits insuffisants',
-          required: tipAmount,
-          available: client?.balanceCredits || 0,
+          required: tipCoins,
+          available: client?.coinBalance || 0,
         });
       }
     }
@@ -184,6 +208,8 @@ export const clientMessagesController = {
     if (!conversation) {
       conversation = await prisma.conversation.create({
         data: {
+          creatorId: creatorId as string,
+          clientId: clientId as string,
           participants: {
             create: [
               { userId: clientId as string },
@@ -199,9 +225,10 @@ export const clientMessagesController = {
       data: {
         conversationId: conversation.id,
         senderId: clientId as string,
+        recipientId: creatorId as string,
         content: content || null,
-        isTip: !!tipAmount,
-        tipAmount: tipAmount || null,
+        isTip: !!tipCoins,
+        tipAmount: tipCoins || null,
       },
       include: {
         sender: {
@@ -216,23 +243,24 @@ export const clientMessagesController = {
     });
 
     // Si tip, traiter le paiement
-    if (tipAmount && tipAmount > 0) {
-      const tipEur = tipAmount * 0.1; // 1 crédit = 0.10€
-      const creatorRevenue = tipEur * 0.8; // 80% après commission
+    if (tipCoins && tipCoins > 0) {
+      const tipAmount = tipCoins;
+      const creatorGroupPiece = Math.floor(tipAmount * 0.8); // 80% après commission
+      const commissionGroupPiece = tipAmount - creatorGroupPiece;
 
       await prisma.user.update({
         where: { id: clientId },
         data: {
-          balanceCredits: { decrement: tipAmount },
-          totalSpent: { increment: tipEur },
+          coinBalance: { decrement: tipAmount },
+          totalSpent: { increment: tipAmount },
         },
       });
 
       await prisma.user.update({
         where: { id: creatorId as string },
         data: {
-          balance: { increment: creatorRevenue },
-          totalEarned: { increment: creatorRevenue },
+          coinBalance: { increment: creatorGroupPiece },
+          totalEarned: { increment: creatorGroupPiece },
         },
       });
 
@@ -240,9 +268,8 @@ export const clientMessagesController = {
         data: {
           userId: clientId,
           type: 'tip',
-          amountCredits: tipAmount,
-          amountEur: tipEur,
-          commissionEur: tipEur * 0.2,
+          amountCoins: tipAmount,
+          commissionCoins: commissionGroupPiece,
           commissionRate: 0.2,
           status: 'completed',
           referenceId: message.id,
@@ -299,20 +326,19 @@ export const clientMessagesController = {
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
-    const price = message.price || 0;
-    const priceCredits = Math.round(price * 10);
+    const priceCoins = message.price || 0; // Le prix est désormais en "Pièces"
 
-    // Vérifier les crédits
+    // Vérifier les pièces (coins)
     const client = await prisma.user.findUnique({
       where: { id: clientId },
-      select: { balanceCredits: true },
+      select: { coinBalance: true },
     });
 
-    if (!client || client.balanceCredits < priceCredits) {
+    if (!client || client.coinBalance < priceCoins) {
       return res.status(400).json({
         error: 'Crédits insuffisants',
-        required: priceCredits,
-        available: client?.balanceCredits || 0,
+        required: priceCoins,
+        available: client?.coinBalance || 0,
       });
     }
 
@@ -323,21 +349,22 @@ export const clientMessagesController = {
     });
 
     // Traiter le paiement
-    const creatorRevenue = price * 0.8;
+    const creatorRevenueCoins = Math.floor(priceCoins * 0.8);
+    const commissionCoins = priceCoins - creatorRevenueCoins;
 
     await prisma.user.update({
       where: { id: clientId },
       data: {
-        balanceCredits: { decrement: priceCredits },
-        totalSpent: { increment: price },
+        coinBalance: { decrement: priceCoins },
+        totalSpent: { increment: priceCoins },
       },
     });
 
     await prisma.user.update({
       where: { id: message.senderId },
       data: {
-        balance: { increment: creatorRevenue },
-        totalEarned: { increment: creatorRevenue },
+        coinBalance: { increment: creatorRevenueCoins },
+        totalEarned: { increment: creatorRevenueCoins },
       },
     });
 
@@ -345,9 +372,8 @@ export const clientMessagesController = {
       data: {
         userId: clientId,
         type: 'media',
-        amountCredits: priceCredits,
-        amountEur: price,
-        commissionEur: price * 0.2,
+        amountCoins: priceCoins,
+        commissionCoins: commissionCoins,
         commissionRate: 0.2,
         status: 'completed',
         referenceId: message.id,

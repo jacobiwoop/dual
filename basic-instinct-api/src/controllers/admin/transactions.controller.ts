@@ -54,8 +54,8 @@ export const transactionsController = {
           type: { in: ['subscription', 'tip', 'media', 'gallery', 'show'] },
         },
         _sum: {
-          amountEur: true,
-          commissionEur: true,
+          amountCoins: true,
+          commissionCoins: true,
         },
         _count: true,
       }),
@@ -66,7 +66,7 @@ export const transactionsController = {
           type: 'credit_purchase',
           status: 'completed',
         },
-        _sum: { amountEur: true },
+        _sum: { amountCoins: true },
         _count: true,
       }),
     ]);
@@ -79,17 +79,17 @@ export const transactionsController = {
         status: 'completed',
       },
       _sum: {
-        amountEur: true,
-        commissionEur: true,
+        amountCoins: true,
+        commissionCoins: true,
       },
     });
 
     res.json({
       period: days,
-      totalRevenue: revenueData._sum.amountEur || 0,
-      totalCommission: revenueData._sum.commissionEur || 0,
+      totalRevenue: revenueData._sum.amountCoins || 0,
+      totalCommission: revenueData._sum.commissionCoins || 0,
       transactionsCount: revenueData._count,
-      creditsSold: creditsSold._sum.amountEur || 0,
+      creditsSold: creditsSold._sum.amountCoins || 0,
       creditsSalesCount: creditsSold._count,
       revenueByType,
     });
@@ -117,14 +117,14 @@ export const transactionsController = {
             type: { in: ['subscription', 'tip', 'media', 'gallery'] },
             status: 'completed',
           },
-          _sum: { amountEur: true, commissionEur: true },
+          _sum: { amountCoins: true, commissionCoins: true },
           _count: true,
         });
 
         return {
           creator,
-          totalRevenue: revenue._sum.amountEur || 0,
-          commission: revenue._sum.commissionEur || 0,
+          totalRevenue: revenue._sum.amountCoins || 0,
+          commission: revenue._sum.commissionCoins || 0,
           transactionsCount: revenue._count,
         };
       })
@@ -150,8 +150,8 @@ export const transactionsController = {
         status: 'completed',
       },
       select: {
-        amountEur: true,
-        commissionEur: true,
+        amountCoins: true,
+        commissionCoins: true,
         type: true,
         createdAt: true,
       },
@@ -173,8 +173,8 @@ export const transactionsController = {
         };
       }
 
-      revenueByDay[dateKey].revenue += tx.amountEur || 0;
-      revenueByDay[dateKey].commission += tx.commissionEur || 0;
+      revenueByDay[dateKey].revenue += tx.amountCoins || 0;
+      revenueByDay[dateKey].commission += tx.commissionCoins || 0;
       revenueByDay[dateKey].count += 1;
     });
 

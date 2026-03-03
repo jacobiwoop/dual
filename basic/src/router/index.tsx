@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 import { HomePage } from '../pages/HomePage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { LivePage } from '../pages/LivePage';
@@ -14,18 +15,23 @@ import { AuthPage } from '../pages/AuthPage';
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppLayout />,          // Sidebar + Header + ChatSidebar persistent
+    element: <ProtectedRoute />, // Protège toutes les routes enfants
     children: [
-      { index: true,           element: <HomePage /> },
-      { path: 'profile/:username', element: <ProfilePage /> },
-      { path: 'explore',       element: <ExplorePage /> },
-      { path: 'notifications', element: <NotificationsPage /> },
-      { path: 'settings',      element: <SettingsPage /> },
-      { path: 'live/:id',      element: <LivePage /> },
-      { path: 'messages',      element: <MessagesPage /> },
-      { path: 'messages/:userId', element: <MessagesPage /> },
-      { path: 'credits',       element: <CreditsPage /> },
-      { path: '*',             element: <NotFoundPage /> },
+      {
+        element: <AppLayout />,  // Sidebar + Header + ChatSidebar persistent
+        children: [
+          { index: true,           element: <HomePage /> },
+          { path: 'profile/:username', element: <ProfilePage /> },
+          { path: 'explore',       element: <ExplorePage /> },
+          { path: 'notifications', element: <NotificationsPage /> },
+          { path: 'settings',      element: <SettingsPage /> },
+          { path: 'live/:id',      element: <LivePage /> },
+          { path: 'messages',      element: <MessagesPage /> },
+          { path: 'messages/:userId', element: <MessagesPage /> },
+          { path: 'credits',       element: <CreditsPage /> },
+          { path: '*',             element: <NotFoundPage /> },
+        ],
+      }
     ],
   },
   // Route publique — sans AppLayout

@@ -45,8 +45,7 @@ export const adminCreatorsController = {
         isVerified: true,
         kycStatus: true,
         isSuspended: true,
-        suspendedReason: true,
-        balance: true,
+        coinBalance: true,
         totalEarned: true,
         subscriptionPrice: true,
         createdAt: true,
@@ -67,11 +66,11 @@ export const adminCreatorsController = {
     const total = await prisma.user.count({ where: whereClause });
 
     res.json({
-      creators: creators.map((c) => ({
+      creators: creators.map((c: any) => ({
         ...c,
-        subscribersCount: c._count.subscriptionsAsCreator,
-        postsCount: c._count.posts,
-        withdrawalsCount: c._count.withdrawals,
+        subscribersCount: c._count?.subscriptionsAsCreator || 0,
+        postsCount: c._count?.posts || 0,
+        withdrawalsCount: c._count?.withdrawals || 0,
       })),
       total,
       hasMore: offset + creators.length < total,
@@ -107,11 +106,8 @@ export const adminCreatorsController = {
     const recentRevenue = await prisma.transaction.aggregate({
       where: {
         userId: id as string,
-        createdAt: { gte: last30Days },
-        type: { in: ['subscription', 'tip', 'media', 'gallery'] },
-        status: 'completed',
       },
-      _sum: { amountEur: true },
+      _sum: { amountCoins: true },
     });
 
     res.json({
@@ -123,7 +119,7 @@ export const adminCreatorsController = {
         libraryItemsCount: creator._count?.libraryItems || 0,
         withdrawalsCount: creator._count?.withdrawals || 0,
         kycSubmissionsCount: creator._count?.kycSubmissions || 0,
-        revenueLastMonth: recentRevenue._sum?.amountEur || 0,
+        revenueLastMonth: recentRevenue._sum?.amountCoins || 0,
       },
     });
   },
@@ -283,7 +279,7 @@ export const adminCreatorsController = {
           type: { in: ['subscription', 'tip', 'media', 'gallery'] },
           status: 'completed',
         },
-        _sum: { amountEur: true, commissionEur: true },
+        _sum: { amountCoins: true, commissionCoins: true },
         _count: true,
       }),
 
@@ -302,7 +298,7 @@ export const adminCreatorsController = {
         },
         select: {
           type: true,
-          amountEur: true,
+          amountCoins: true,
           createdAt: true,
         },
       }),
@@ -310,8 +306,8 @@ export const adminCreatorsController = {
 
     res.json({
       period: days,
-      revenue: revenue._sum.amountEur || 0,
-      commission: revenue._sum.commissionEur || 0,
+      revenue: revenue._sum?.amountCoins || 0,
+      commission: revenue._sum?.commissionCoins || 0,
       transactionsCount: revenue._count,
       subscribers,
       transactions,

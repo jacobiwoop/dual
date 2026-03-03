@@ -1,17 +1,26 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wallet } from 'lucide-react';
+import { PurchaseModal } from '../components/PurchaseModal';
 
 const PACKS = [
-  { id: 1, coins: 100,   price: '0,99€',  bonus: null,     popular: false },
-  { id: 2, coins: 500,   price: '4,99€',  bonus: null,     popular: false },
-  { id: 3, coins: 1000,  price: '9,99€',  bonus: '+50🪙',  popular: true  },
-  { id: 4, coins: 2500,  price: '24,99€', bonus: '+200🪙',  popular: false },
-  { id: 5, coins: 5000,  price: '49,99€', bonus: '+500🪙',  popular: false },
-  { id: 6, coins: 10000, price: '89,99€', bonus: '+1500🪙', popular: false },
+  { id: 1, coins: 100,   priceNum: 1,  priceStr: '1€',   bonus: null,     popular: false },
+  { id: 2, coins: 500,   priceNum: 5,  priceStr: '5€',   bonus: null,     popular: false },
+  { id: 3, coins: 1000,  priceNum: 10, priceStr: '10€',  bonus: '+50🪙',  popular: true  },
+  { id: 4, coins: 2500,  priceNum: 25, priceStr: '25€',  bonus: '+200🪙', popular: false },
+  { id: 5, coins: 5000,  priceNum: 50, priceStr: '50€',  bonus: '+500🪙', popular: false },
+  { id: 6, coins: 10000, price: 90,    priceStr: '90€',  bonus: '+1500🪙', popular: false },
 ];
 
 export const CreditsPage = () => {
   const navigate = useNavigate();
+  const [selectedPack, setSelectedPack] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpenModal = (pack: any) => {
+    setSelectedPack(pack);
+    setIsModalOpen(true);
+  };
 
   return (
     <div>
@@ -55,8 +64,10 @@ export const CreditsPage = () => {
             )}
             <div className="text-3xl font-bold text-amber-600 mb-1">{pack.coins.toLocaleString()}🪙</div>
             {pack.bonus && <div className="text-sm text-green-600 font-semibold mb-3">+ Bonus {pack.bonus}</div>}
-            <div className="text-2xl font-bold text-gray-900 mb-4">{pack.price}</div>
-            <button className={`w-full py-2.5 rounded-xl font-bold text-sm transition-colors ${
+            <div className="text-2xl font-bold text-gray-900 mb-4">{pack.priceStr}</div>
+            <button 
+              onClick={() => handleOpenModal(pack)}
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-colors ${
               pack.popular ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-gray-100 hover:bg-amber-500 hover:text-white text-gray-800'
             }`}>
               Acheter
@@ -68,6 +79,16 @@ export const CreditsPage = () => {
       <p className="text-xs text-gray-400 text-center mt-8">
         Les crédits n'expirent pas · Paiement sécurisé · Aucun remboursement
       </p>
+
+      {/* MODAL */}
+      <PurchaseModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        pack={selectedPack}
+        onSuccess={() => {
+          alert("Votre demande d'achat a été envoyée ! Un administrateur va la valider bientôt.");
+        }}
+      />
     </div>
   );
 };

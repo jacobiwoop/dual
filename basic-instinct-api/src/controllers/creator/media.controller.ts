@@ -72,7 +72,7 @@ export const mediaController = {
         data: {
           creatorId,
           folderId: folderId || null,
-          url: key, // On stocke le key R2, pas l'URL publique
+          url: publicUrl, // On stocke l'URL publique complète pour affichage direct
           type,
           filename,
           sizeBytes: BigInt(size),

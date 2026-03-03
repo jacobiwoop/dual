@@ -1,20 +1,32 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Image as ImageIcon, Ban, StickyNote, Info, ChevronLeft, ChevronRight } from 'lucide-react';
-import { CONVERSATIONS, Conversation } from '@/data/mockData';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ClientInfoDrawer } from '@/components/ClientInfoDrawer';
 import { ClientNotesModal } from '@/components/ClientNotesModal';
 import { MessageMediaModal } from '@/components/MessageMediaModal';
+import { useSocket } from '@/hooks/useSocket';
+import { useMessages } from '@/hooks/useMessages';
+import { useTyping } from '@/hooks/useTyping';
+
+interface RealConversation {
+  id: string;
+  clientId: string;
+  isOnline?: boolean;
+  client: { id: string; username: string; displayName: string; avatarUrl: string | null; } | null;
+  lastMessage?: { content: string; createdAt: string; senderId: string; isRead: boolean; } | null;
+  unreadCount: number;
+  updatedAt: string;
+}
 
 interface MessagesProps {
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
-  conversations: Conversation[];
+  realConversations: RealConversation[];
   onOpenClientList?: () => void;
 }
 
-export function Messages({ selectedConversationId, onSelectConversation, conversations, onOpenClientList }: MessagesProps) {
+export function Messages({ selectedConversationId, onSelectConversation, realConversations, onOpenClientList }: MessagesProps) {
   const [messageText, setMessageText]   = useState('');
   const [isInfoOpen, setIsInfoOpen]     = useState(false);
   const [isNotesOpen, setIsNotesOpen]   = useState(false);
@@ -22,23 +34,37 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
   const [notes, setNotes]               = useState<Record<string, string>>({});
   const messagesEndRef                  = useRef<HTMLDivElement>(null);
 
+  // WebSocket hooks - on utilise le vrai UUID de conversation (pas le mock userId)
+  const { isConnected } = useSocket();
+  const { messages: realtimeMessages, sendMessage, sending, loadMessages } = useMessages(selectedConversationId);
+  const { typingUsers, isAnyoneTyping, handleTyping, stopTyping } = useTyping(selectedConversationId);
+
   // Swipe / slide state
   const touchStartX  = useRef<number | null>(null);
-  const [dragX, setDragX]         = useState(0);          // live offset in px while dragging
+  const [dragX, setDragX]         = useState(0);
   const [slideAnim, setSlideAnim] = useState<'idle' | 'out-left' | 'out-right' | 'in-left' | 'in-right'>('idle');
 
-  const currentIndex = conversations.findIndex(c => c.userId === selectedConversationId);
-  const conversation = conversations[currentIndex] ?? conversations[0];
-  const hasPrev      = currentIndex > 0;
-  const hasNext      = currentIndex < conversations.length - 1;
+  // Conversation sélectionnée
+  const realConv = realConversations.find(c => c.id === selectedConversationId);
+  const currentIndex = realConversations.findIndex(c => c.id === selectedConversationId);
+
+  // Charger l'historique de la conversation si elle existe
+  useEffect(() => {
+    if (realConv?.clientId) {
+      loadMessages(realConv.clientId);
+    }
+  }, [realConv?.clientId, loadMessages]);
+
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex !== -1 && currentIndex < realConversations.length - 1;
 
   const goPrev = useCallback(() => {
-    if (hasPrev) onSelectConversation(conversations[currentIndex - 1].userId);
-  }, [hasPrev, currentIndex, conversations, onSelectConversation]);
+    if (hasPrev) onSelectConversation(realConversations[currentIndex - 1].id);
+  }, [hasPrev, currentIndex, realConversations, onSelectConversation]);
 
   const goNext = useCallback(() => {
-    if (hasNext) onSelectConversation(conversations[currentIndex + 1].userId);
-  }, [hasNext, currentIndex, conversations, onSelectConversation]);
+    if (hasNext) onSelectConversation(realConversations[currentIndex + 1].id);
+  }, [hasNext, currentIndex, realConversations, onSelectConversation]);
 
   // Keyboard navigation — désactivé quand input/textarea actif ou modal ouvert
   useEffect(() => {
@@ -61,11 +87,11 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
     setIsInfoOpen(false);
     setIsNotesOpen(false);
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversation?.userId]);
+  }, [selectedConversationId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversation?.messages]);
+  }, [realtimeMessages, isAnyoneTyping]);
 
   // Swipe handlers with live translateX effect
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -106,7 +132,21 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
     }
   };
 
-  if (!conversation) {
+  // Extrait les infos de l'utilisateur
+  const displayUser = realConv?.client ? {
+    id: realConv.client.id,
+    username: realConv.client.username,
+    displayName: realConv.client.displayName || realConv.client.username,
+    avatar: realConv.client.avatarUrl || `https://ui-avatars.com/api/?name=${realConv.client.username}&background=7c3aed&color=fff`,
+    isOnline: realConv?.isOnline ?? false,
+    subscriptionTier: 'Normal', // TODO: Fetch real tier
+    totalSpent: 0,              // TODO: Fetch real stats
+    notes: '',
+    joinDate: new Date(),       // Fallback for valid time value
+    lastActive: new Date()      // Fallback for valid time value
+  } : null;
+
+  if (!displayUser) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 text-gray-400 text-sm">
         Sélectionnez une conversation
@@ -114,8 +154,7 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
     );
   }
 
-  const { user } = conversation;
-  const userNotes = notes[user.id] ?? user.notes ?? '';
+  const userNotes = notes[displayUser.id] ?? displayUser.notes ?? '';
 
   // CSS slide classes
   const slideClass = {
@@ -125,6 +164,10 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
     'in-left':   'transition-none  translate-x-[20%]',
     'in-right':  'transition-none  translate-x-[-20%]',
   }[slideAnim];
+
+  // Calcul pour l'affichage X / N
+  const displayIndex = currentIndex + 1;
+  const totalCount = realConversations.length;
 
   return (
     <div
@@ -156,8 +199,8 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
         <div className="flex items-center gap-3">
           {/* Avatar */}
           <div className="relative shrink-0">
-            <img src={user.avatar} alt={user.username} className="w-10 h-10 rounded-full object-cover shadow-sm" />
-            {user.isOnline && (
+            <img src={displayUser.avatar} alt={displayUser.username} className="w-10 h-10 rounded-full object-cover shadow-sm" />
+            {displayUser.isOnline && (
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
             )}
           </div>
@@ -165,18 +208,18 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
           {/* Nom + tier + statut */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="font-bold text-gray-900 text-sm leading-tight truncate">{user.displayName}</h2>
-              {user.subscriptionTier === 'Plus' && (
+              <h2 className="font-bold text-gray-900 text-sm leading-tight truncate">{displayUser.displayName}</h2>
+              {displayUser.subscriptionTier === 'Plus' && (
                 <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full border border-purple-200 font-bold shrink-0">💎 Plus</span>
               )}
-              {user.subscriptionTier === 'VIP' && (
+              {displayUser.subscriptionTier === 'VIP' && (
                 <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200 font-bold shrink-0">⭐ VIP</span>
               )}
             </div>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              {user.isOnline ? '🟢 En ligne' : '⚪ Hors ligne'}
+              {displayUser.isOnline ? '🟢 En ligne' : '⚪ Hors ligne'}
               <span className="mx-1.5">·</span>
-              <span className="font-semibold text-gray-600">{user.totalSpent.toLocaleString('fr-FR')}🪙</span>
+              <span className="font-semibold text-gray-600">{displayUser.totalSpent.toLocaleString('fr-FR')}🪙</span>
             </p>
           </div>
 
@@ -213,7 +256,7 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
             >
               <ChevronLeft size={15} />
             </button>
-            <span className="text-xs font-bold text-gray-400 tabular-nums">{currentIndex + 1} / {conversations.length}</span>
+            <span className="text-xs font-bold text-gray-400 tabular-nums">{displayIndex} / {totalCount}</span>
             <button
               onClick={goNext}
               disabled={!hasNext}
@@ -249,20 +292,21 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-[#F5F5F0]">
         <div className="text-center text-xs text-gray-400 my-2">Aujourd'hui</div>
 
-        {conversation.messages.map(msg => {
-          const isMe = msg.senderId === 'me';
+        {realtimeMessages.map(msg => {
+          const isMe = msg.senderId !== displayUser.id;
+          
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] md:max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm leading-relaxed ${
+                <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${
                   isMe
                     ? 'bg-purple-600 text-white rounded-tr-none'
                     : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
                 }`}>
-                  {msg.text}
+                  {msg.content}
                 </div>
                 <span className="text-[10px] text-gray-400 mt-1 px-1">
-                  {format(msg.timestamp, 'HH:mm')}
+                  {format(msg.createdAt ? new Date(msg.createdAt) : new Date(), 'HH:mm')}
                 </span>
               </div>
             </div>
@@ -285,7 +329,7 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
           >
             <ChevronLeft size={16} /> Préc.
           </button>
-          <span className="text-xs text-gray-400 font-medium">{currentIndex + 1} / {conversations.length}</span>
+          <span className="text-xs text-gray-400 font-medium">{displayIndex} / {totalCount}</span>
           <button
             onClick={goNext}
             disabled={!hasNext}
@@ -309,20 +353,40 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
             </div>
             <textarea
               value={messageText}
-              onChange={e => setMessageText(e.target.value)}
+              onChange={e => {
+                setMessageText(e.target.value);
+                handleTyping();
+                e.target.style.height = '40px';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
+              }}
               onKeyDown={e => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  // TODO: envoyer
+                  if (messageText.trim() && isConnected) {
+                    sendMessage(messageText.trim());
+                    setMessageText('');
+                    stopTyping();
+                    e.currentTarget.style.height = '40px';
+                  }
                 }
               }}
-              placeholder="Écrire... (Ctrl+Enter)"
+              placeholder="Écrire un message..."
               className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2.5 max-h-32 text-sm text-gray-900 placeholder-gray-400"
               rows={1}
               style={{ minHeight: '40px' }}
             />
             <div className="pb-1 pr-1">
-              <button className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-md shadow-purple-500/20">
+              <button 
+                onClick={() => {
+                  if (messageText.trim() && isConnected) {
+                    sendMessage(messageText.trim());
+                    setMessageText('');
+                    stopTyping();
+                  }
+                }}
+                disabled={!isConnected || !messageText.trim()}
+                className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-md shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Send size={16} className="ml-0.5" />
               </button>
             </div>
@@ -331,9 +395,9 @@ export function Messages({ selectedConversationId, onSelectConversation, convers
       </div>
       </div>{/* end sliding wrapper */}
       {/* Drawer, Modal & MessageMediaModal — outside the sliding wrapper */}
-      <ClientInfoDrawer user={user} isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+      <ClientInfoDrawer user={displayUser as any} isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
       <ClientNotesModal
-        user={user}
+        user={displayUser as any}
         isOpen={isNotesOpen}
         onClose={() => setIsNotesOpen(false)}
         initialNotes={userNotes}

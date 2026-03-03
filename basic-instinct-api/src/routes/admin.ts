@@ -5,6 +5,7 @@ import { moderationController } from '../controllers/admin/moderation.controller
 import { transactionsController } from '../controllers/admin/transactions.controller';
 import { withdrawalsController } from '../controllers/admin/withdrawals.controller';
 import { dashboardController } from '../controllers/admin/dashboard.controller';
+import { adminPaymentsController } from '../controllers/admin/payments.controller';
 
 const router = Router();
 
@@ -55,5 +56,12 @@ router.get('/withdrawals/:id', withdrawalsController.getWithdrawal);
 router.put('/withdrawals/:id/approve', withdrawalsController.approveWithdrawal);
 router.put('/withdrawals/:id/reject', withdrawalsController.rejectWithdrawal);
 router.get('/withdrawals/stats', withdrawalsController.getStats);
+
+// ====================================
+// Achat de pièces (Validation Admin)
+// ====================================
+router.get('/payments/requests', adminPaymentsController.getPurchaseRequests);
+router.put('/payments/requests/:id/approve', adminPaymentsController.approvePurchaseRequest);
+router.put('/payments/requests/:id/reject', adminPaymentsController.rejectPurchaseRequest);
 
 export default router;

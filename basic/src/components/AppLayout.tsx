@@ -6,7 +6,7 @@ import { ChatSidebar } from './ChatSidebar';
 
 export const AppLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [activeChatId, setActiveChatId]         = useState<number | null>(null);
+  const [activeChatId, setActiveChatId]         = useState<string | number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen]     = useState(false);
   const [isChatOpen, setIsChatOpen]             = useState(false);
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export const AppLayout = () => {
           {/* Outlet = zone qui change selon la route */}
           <main className="flex-1 p-8 pt-0 min-h-[calc(100vh-92px)] overflow-x-hidden">
             <div className="max-w-5xl mx-auto">
-              <Outlet context={{ openChat: (id: number) => { setActiveChatId(id); setIsChatOpen(true); }, isChatOpen, activeChatId }} />
+              <Outlet context={{ openChat: (id: string | number) => { setActiveChatId(id); setIsChatOpen(true); }, isChatOpen, activeChatId }} />
             </div>
           </main>
 

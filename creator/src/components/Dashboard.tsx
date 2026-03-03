@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { 
   LineChart, 
   Line, 
@@ -10,18 +11,72 @@ import {
   Bar
 } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Users, DollarSign, Activity, CreditCard } from 'lucide-react';
-
-const data = [
-  { name: 'Lun', uv: 4000, pv: 2400, amt: 2400 },
-  { name: 'Mar', uv: 3000, pv: 1398, amt: 2210 },
-  { name: 'Mer', uv: 2000, pv: 9800, amt: 2290 },
-  { name: 'Jeu', uv: 2780, pv: 3908, amt: 2000 },
-  { name: 'Ven', uv: 1890, pv: 4800, amt: 2181 },
-  { name: 'Sam', uv: 2390, pv: 3800, amt: 2500 },
-  { name: 'Dim', uv: 3490, pv: 4300, amt: 2100 },
-];
+import { analyticsService, OverviewStats, RevenueDataPoint, SubscribersDataPoint, TopClient } from '../services/analytics';
 
 export function Dashboard() {
+  const [overview, setOverview] = useState<OverviewStats | null>(null);
+  const [revenueData, setRevenueData] = useState<RevenueDataPoint[]>([]);
+  const [subscribersData, setSubscribersData] = useState<SubscribersDataPoint[]>([]);
+  const [topClients, setTopClients] = useState<TopClient[]>([]);
+  const [period, setPeriod] = useState('30d');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [period]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Charger toutes les données en parallèle
+      const [overviewRes, revenueRes, subscribersRes, clientsRes] = await Promise.all([
+        analyticsService.getOverview(),
+        analyticsService.getRevenueChart(period),
+        analyticsService.getSubscribersChart(period),
+        analyticsService.getTopClients(5),
+      ]);
+
+      setOverview(overviewRes);
+      setRevenueData(revenueRes);
+      setSubscribersData(subscribersRes);
+      setTopClients(clientsRes);
+    } catch (err: any) {
+      console.error('Error loading dashboard:', err);
+      setError(err.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Chargement du dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={loadDashboardData}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
@@ -31,10 +86,15 @@ export function Dashboard() {
           <p className="text-gray-500">Bienvenue, voici un aperçu de vos performances.</p>
         </div>
         <div className="flex gap-4">
-          <select className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20">
-            <option>Cette semaine</option>
-            <option>Ce mois</option>
-            <option>Cette année</option>
+          <select 
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+          >
+            <option value="7d">Cette semaine</option>
+            <option value="30d">Ce mois</option>
+            <option value="90d">3 mois</option>
+            <option value="1y">Cette année</option>
           </select>
         </div>
       </div>
@@ -42,10 +102,34 @@ export function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Revenus Totaux', value: '56,874 €', change: '+12%', icon: DollarSign, color: 'bg-emerald-500' },
-          { label: 'Nouveaux Abonnés', value: '1,234', change: '+5%', icon: Users, color: 'bg-blue-500' },
-          { label: 'Ventes Médias', value: '24,575 €', change: '+18%', icon: CreditCard, color: 'bg-purple-500' },
-          { label: 'Taux d\'Engagement', value: '8.4%', change: '-2%', icon: Activity, color: 'bg-orange-500' },
+          { 
+            label: 'Revenus Totaux', 
+            value: `${overview?.totalEarned?.toLocaleString('fr-FR') || 0} 🪙`, 
+            change: '+', 
+            icon: DollarSign, 
+            color: 'bg-emerald-500' 
+          },
+          { 
+            label: 'Abonnés (Total)', 
+            value: overview?.subscribers?.total?.toLocaleString('fr-FR') || 0, 
+            change: `+${overview?.subscribers?.new7Days || 0} (7j)`, 
+            icon: Users, 
+            color: 'bg-blue-500' 
+          },
+          { 
+            label: 'Revenus (30j)', 
+            value: `${overview?.earningsLast30Days?.toLocaleString('fr-FR') || 0} 🪙`, 
+            change: '+', 
+            icon: CreditCard, 
+            color: 'bg-purple-500' 
+          },
+          { 
+            label: 'Messages', 
+            value: overview?.messages?.total?.toLocaleString('fr-FR') || 0, 
+            change: `${overview?.messages?.unread || 0} non lus`, 
+            icon: Activity, 
+            color: 'bg-orange-500' 
+          },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
             <div className="flex justify-between items-start mb-4">
@@ -72,15 +156,25 @@ export function Dashboard() {
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data}>
+              <LineChart data={revenueData.map(d => ({ 
+                name: new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+                revenus: d.amount 
+              }))}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
                 <Tooltip 
                   contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                  formatter={(value: number) => [`${value.toLocaleString('fr-FR')} €`, 'Revenus']}
                 />
-                <Line type="monotone" dataKey="pv" stroke="#8B5CF6" strokeWidth={3} dot={{r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6}} />
-                <Line type="monotone" dataKey="uv" stroke="#10B981" strokeWidth={3} dot={{r: 4, fill: '#10B981', strokeWidth: 2, stroke: '#fff'}} />
+                <Line 
+                  type="monotone" 
+                  dataKey="revenus" 
+                  stroke="#8B5CF6" 
+                  strokeWidth={3} 
+                  dot={{r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff'}} 
+                  activeDot={{r: 6}} 
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>

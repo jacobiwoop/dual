@@ -12,7 +12,8 @@ import {
   Bell,
   Search,
   Menu,
-  User
+  User,
+  Coins
 } from 'lucide-react';
 
 export const NAV_ITEMS = [
@@ -28,6 +29,7 @@ export const NAV_ITEMS = [
     { icon: ImageIcon, label: 'Médias', path: '/media' }
   ]},
   { label: 'FINANCES', items: [
+    { icon: Coins, label: 'Paiements', path: '/coin-requests', badge: 1 },
     { icon: CreditCard, label: 'Transactions', path: '/transactions' },
     { icon: Wallet, label: 'Retraits', path: '/withdrawals', badge: 2 },
     { icon: Percent, label: 'Commissions', path: '/commissions' }

@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import { r2Client, R2_BUCKET_NAME, extractR2Key } from '../../lib/r2';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const libraryController = {
   // GET /api/creator/library - Liste des médias bibliothèque
@@ -43,8 +46,36 @@ export const libraryController = {
       },
     });
 
+    // Générer les URLs signées en parallèle pour l'affichage (valides 1h)
+    const serialized = await Promise.all(items.map(async (item) => {
+      let displayUrl = item.url;
+      try {
+        const key = extractR2Key(item.url);
+        const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+        displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+      } catch {
+        // Fallback: utiliser l'URL directe si la signature échoue
+      }
+
+      let displayThumbnail = item.thumbnailUrl;
+      if (item.thumbnailUrl) {
+        try {
+          const key = extractR2Key(item.thumbnailUrl);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        } catch { /* fallback */ }
+      }
+
+      return {
+        ...item,
+        url: displayUrl,
+        thumbnailUrl: displayThumbnail,
+        sizeBytes: item.sizeBytes !== null ? Number(item.sizeBytes) : null,
+      };
+    }));
+
     res.json({
-      items,
+      items: serialized,
       total,
       hasMore: Number(offset) + items.length < total,
     });

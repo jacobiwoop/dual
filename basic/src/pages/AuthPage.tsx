@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, Chrome } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 type Tab = 'login' | 'register';
 
@@ -13,6 +14,7 @@ const FEATURES = [
 
 export const AuthPage = () => {
   const navigate = useNavigate();
+  const { login, register } = useAuth();
   const [tab, setTab] = useState<Tab>('login');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,7 +25,7 @@ export const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -36,12 +38,19 @@ export const AuthPage = () => {
       return;
     }
 
-    setLoading(true);
-    // Simule une requête async
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      setLoading(true);
+      if (tab === 'login') {
+        await login({ email, password });
+      } else {
+        await register({ email, password, username, displayName: username });
+      }
       navigate('/');
-    }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Une erreur est survenue.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -14,67 +14,75 @@ datasource db {
 // ============================================================
 
 model User {
-  id               String   @id @default(uuid())
-  email            String   @unique
-  passwordHash     String
-  role             String   @default("CLIENT") // "CREATOR", "CLIENT", "ADMIN"
-  
+  id           String @id @default(uuid())
+  email        String @unique
+  passwordHash String
+  role         String @default("CLIENT") // "CREATOR", "CLIENT", "ADMIN"
+
   // Profil général
-  displayName      String?
-  username         String?  @unique
-  avatarUrl        String?
-  bio              String?
-  bannerUrl        String?
-  
+  displayName String?
+  username    String? @unique
+  avatarUrl   String?
+  bio         String?
+  bannerUrl   String?
+
   // Paramètres Créateur (si role = CREATOR)
-  subscriptionPrice Float     @default(0.0)
-  subscriptionPricePlus Float  @default(0.0) // Abonnement premium (optionnel)
-  balance          Float     @default(0.0)   // Solde en euros
-  balanceCredits   Int       @default(0)     // Solde en crédits (pour clients)
-  totalEarned      Float     @default(0.0)   // Total gagné (créateurs)
-  totalSpent       Float     @default(0.0)   // Total dépensé (clients)
-  
+  subscriptionPrice     Int @default(0) // Prix en pièces
+  subscriptionPricePlus Int @default(0) // Abonnement premium (optionnel) en pièces
+  coinBalance           Int @default(0) // Solde Global en Pièces (créateurs ou clients)
+  totalEarned           Int @default(0) // Total gagné (créateurs) en pièces
+  totalSpent            Int @default(0) // Total dépensé (clients) en pièces
+
+  // Paramètres de Payout (Créateurs)
+  preferredPayoutMethod String? // "BANK" | "CRYPTO" | "PAXFUL"
+  cryptoAddress         String? // Ex: TQkxyz... (TRC20)
+  cryptoNetwork         String? // Ex: "TRC20", "ERC20"
+  paxfulUsername        String? // Identifiant Paxful
+
   // KYC & Vérification (créateurs)
-  isVerified       Boolean   @default(false)
-  kycStatus        String    @default("pending") // "pending" | "submitted" | "approved" | "rejected"
-  iban             String?
-  ibanVerified     Boolean   @default(false)
-  
+  isVerified   Boolean @default(false)
+  kycStatus    String  @default("pending") // "pending" | "submitted" | "approved" | "rejected"
+  iban         String?
+  ibanVerified Boolean @default(false)
+
   // Statut compte
-  isActive         Boolean   @default(true)
-  isSuspended      Boolean   @default(false)
-  suspendedReason  String?
-  suspendedAt      DateTime?
-  
+  isActive        Boolean   @default(true)
+  isSuspended     Boolean   @default(false)
+  suspendedReason String?
+  suspendedAt     DateTime?
+
   // Timestamps
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  lastLoginAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
 
   // Relations
-  sentMessages            Message[]         @relation("SentMessages")
-  receivedConversations   ConversationParticipant[]
-  libraryFolders          LibraryFolder[]
-  libraryItems            LibraryItem[]
-  posts                   Post[]
-  likes                   Like[]
-  comments                Comment[]
-  subscriptionsAsCreator  Subscription[]    @relation("CreatorSubscriptions")
-  subscriptionsAsClient   Subscription[]    @relation("ClientSubscriptions")
-  purchases               Purchase[]
-  showTypes               ShowType[]
-  showRequestsAsCreator   ShowRequest[]     @relation("CreatorShowRequests")
-  showRequestsAsClient    ShowRequest[]     @relation("ClientShowRequests")
-  autoMessages            AutoMessage[]
-  withdrawals             Withdrawal[]
-  kycSubmissions          KycSubmission[]
-  notesAboutClients       CreatorNote[]     @relation("CreatorNotes")
-  notesAboutMe            CreatorNote[]     @relation("ClientNotes")
-  sentNotifications       Notification[]    @relation("NotificationRecipient")
-  mediaItems              MediaItem[]
-  galleries               Gallery[]
-  refreshTokens           RefreshToken[]
-  transactions            Transaction[]
+  sentMessages              Message[]                 @relation("SentMessages")
+  conversationsAsCreator    Conversation[]            @relation("CreatorConversations")
+  conversationsAsClient     Conversation[]            @relation("ClientConversations")
+  receivedConversations     ConversationParticipant[]
+  libraryFolders         LibraryFolder[]
+  libraryItems           LibraryItem[]
+  posts                  Post[]
+  likes                  Like[]
+  comments               Comment[]
+  subscriptionsAsCreator Subscription[]            @relation("CreatorSubscriptions")
+  subscriptionsAsClient  Subscription[]            @relation("ClientSubscriptions")
+  purchases              Purchase[]
+  showTypes              ShowType[]
+  showRequestsAsCreator  ShowRequest[]             @relation("CreatorShowRequests")
+  showRequestsAsClient   ShowRequest[]             @relation("ClientShowRequests")
+  autoMessages           AutoMessage[]
+  withdrawals            Withdrawal[]
+  kycSubmissions         KycSubmission[]
+  notesAboutClients      CreatorNote[]             @relation("CreatorNotes")
+  notesAboutMe           CreatorNote[]             @relation("ClientNotes")
+  sentNotifications      Notification[]            @relation("NotificationRecipient")
+  mediaItems             MediaItem[]
+  galleries              Gallery[]
+  refreshTokens          RefreshToken[]
+  transactions           Transaction[]
+  purchaseRequests       PurchaseRequest[]
 }
 
 // Table pour les refresh tokens JWT
@@ -84,9 +92,9 @@ model RefreshToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
@@ -95,70 +103,85 @@ model RefreshToken {
 // ============================================================
 
 model Conversation {
-  id               String   @id @default(uuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id        String   @id @default(uuid())
+  creatorId String
+  clientId  String
+  
+  lastMessageAt DateTime? // Timestamp du dernier message
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  participants     ConversationParticipant[]
-  messages         Message[]
+  creator      User                      @relation("CreatorConversations", fields: [creatorId], references: [id], onDelete: Cascade)
+  client       User                      @relation("ClientConversations", fields: [clientId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+  
+  @@unique([creatorId, clientId])
+  @@index([creatorId])
+  @@index([clientId])
 }
 
 model ConversationParticipant {
-  id               String   @id @default(uuid())
-  conversationId   String
-  userId           String
-  joinedAt         DateTime @default(now())
-  lastReadAt       DateTime @default(now())
+  id             String   @id @default(uuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime @default(now())
 
   // Relations
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@index([userId])
 }
 
 model Message {
-  id               String   @id @default(uuid())
-  conversationId   String
-  senderId         String
-  content          String?  // Texte du message (optionnel si média seul)
-  
+  id             String  @id @default(uuid())
+  conversationId String
+  senderId       String
+  recipientId    String  // Destinataire du message
+  content        String? // Texte du message (optionnel si média seul)
+  type           String  @default("text") // "text" | "media" | "tip"
+
   // Messages payants (locked media)
-  isPaid           Boolean  @default(false)
-  price            Float?   // Prix en crédits
-  isUnlocked       Boolean  @default(false) // True si destinataire l'a acheté
-  
+  isPaid     Boolean @default(false)
+  price      Float? // Prix en crédits
+  isUnlocked Boolean @default(false) // True si destinataire l'a acheté
+
   // Tips (pourboires)
-  isTip            Boolean  @default(false)
-  tipAmount        Float?   // Montant du tip en crédits
-  
+  isTip     Boolean @default(false)
+  tipAmount Float? // Montant du tip en crédits
+
   // Auto-messages
-  isAuto           Boolean  @default(false)
-  
+  isAuto Boolean @default(false)
+
   // Statut
-  isRead           Boolean  @default(false)
-  
-  createdAt        DateTime @default(now())
+  isRead Boolean   @default(false)
+  readAt DateTime? // Timestamp de lecture
+
+  createdAt DateTime @default(now())
 
   // Relations
-  conversation     Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender           User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  conversation     Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender           User           @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   mediaAttachments MessageMedia[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+  @@index([recipientId])
 }
 
 // Table de liaison entre un Message et un ou plusieurs LibraryItem
 model MessageMedia {
-  id               String   @id @default(uuid())
-  messageId        String
-  libraryItemId    String
+  id            String @id @default(uuid())
+  messageId     String
+  libraryItemId String
 
-  message          Message     @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  libraryItem      LibraryItem @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+  message     Message     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  libraryItem LibraryItem @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, libraryItemId])
 }
@@ -168,44 +191,44 @@ model MessageMedia {
 // ============================================================
 
 model LibraryFolder {
-  id               String   @id @default(uuid())
-  creatorId        String
-  title            String
-  description      String?
-  coverUrl         String?
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id          String  @id @default(uuid())
+  creatorId   String
+  title       String
+  description String?
+  coverUrl    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  creator          User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  items            LibraryItem[]
-  
+  creator User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  items   LibraryItem[]
+
   @@index([creatorId])
 }
 
 model LibraryItem {
-  id               String   @id @default(uuid())
-  creatorId        String
-  folderId         String?
-  
-  url              String
-  thumbnailUrl     String?
-  type             String   // "image" | "video"
-  filename         String?
-  sizeBytes        BigInt?
-  durationSec      Int?     // Durée vidéo en secondes
-  
+  id        String  @id @default(uuid())
+  creatorId String
+  folderId  String?
+
+  url          String
+  thumbnailUrl String?
+  type         String // "image" | "video"
+  filename     String?
+  sizeBytes    BigInt?
+  durationSec  Int? // Durée vidéo en secondes
+
   // Métadonnées de processing (JSON)
-  metadata         String?  // JSON string contenant variants, dimensions, etc.
-  
-  createdAt        DateTime @default(now())
+  metadata String? // JSON string contenant variants, dimensions, etc.
+
+  createdAt DateTime @default(now())
 
   // Relations
-  creator          User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  folder           LibraryFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  messageLinks     MessageMedia[]
-  
+  creator      User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  folder       LibraryFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  messageLinks MessageMedia[]
+
   @@index([creatorId, folderId])
 }
 
@@ -214,70 +237,70 @@ model LibraryItem {
 // ============================================================
 
 model Post {
-  id               String   @id @default(uuid())
-  creatorId        String
-  content          String?  // Texte du post
-  type             String   @default("text") // "text" | "image" | "video" | "gallery"
-  
+  id        String  @id @default(uuid())
+  creatorId String
+  content   String? // Texte du post
+  type      String  @default("text") // "text" | "image" | "video" | "gallery"
+
   // Visibilité
-  visibility       String   @default("subscribers") // "public" | "subscribers" | "paid"
-  priceCredits     Int      @default(0)
-  
+  visibility   String @default("subscribers") // "public" | "subscribers" | "paid"
+  priceCredits Int    @default(0)
+
   // Stats
-  likesCount       Int      @default(0)
-  commentsCount    Int      @default(0)
-  viewsCount       Int      @default(0)
-  
-  isVisible        Boolean  @default(true)
-  isPinned         Boolean  @default(false)
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  likesCount    Int @default(0)
+  commentsCount Int @default(0)
+  viewsCount    Int @default(0)
+
+  isVisible Boolean @default(true)
+  isPinned  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  creator          User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  mediaItems       PostMedia[]
-  likes            Like[]
-  comments         Comment[]
-  
+  creator    User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  mediaItems PostMedia[]
+  likes      Like[]
+  comments   Comment[]
+
   @@index([creatorId, createdAt])
 }
 
 model PostMedia {
-  id               String   @id @default(uuid())
-  postId           String
-  mediaItemId      String
-  sortOrder        Int      @default(0)
+  id          String @id @default(uuid())
+  postId      String
+  mediaItemId String
+  sortOrder   Int    @default(0)
 
-  post             Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  mediaItem        MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaItem MediaItem @relation(fields: [mediaItemId], references: [id], onDelete: Cascade)
 
   @@unique([postId, mediaItemId])
 }
 
 model Like {
-  id               String   @id @default(uuid())
-  postId           String
-  userId           String
-  createdAt        DateTime @default(now())
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
 
-  post             Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
   @@index([userId])
 }
 
 model Comment {
-  id               String   @id @default(uuid())
-  postId           String
-  userId           String
-  content          String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  post             Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([postId, createdAt])
   @@index([userId])
@@ -288,64 +311,64 @@ model Comment {
 // ============================================================
 
 model MediaItem {
-  id               String   @id @default(uuid())
-  creatorId        String
-  type             String   // "image" | "video"
-  url              String
-  thumbnailUrl     String?
-  
+  id           String  @id @default(uuid())
+  creatorId    String
+  type         String // "image" | "video"
+  url          String
+  thumbnailUrl String?
+
   // Visibilité et tarification
-  visibility       String   @default("free") // "free" | "subscribers" | "paid"
-  priceCredits     Int      @default(0)
-  
-  description      String?
-  galleryId        String?
-  sortOrder        Int      @default(0)
-  
+  visibility   String @default("free") // "free" | "subscribers" | "paid"
+  priceCredits Int    @default(0)
+
+  description String?
+  galleryId   String?
+  sortOrder   Int     @default(0)
+
   // Métadonnées fichier
-  fileSizeBytes    BigInt?
-  durationSec      Int?     // Vidéos uniquement
-  
+  fileSizeBytes BigInt?
+  durationSec   Int? // Vidéos uniquement
+
   // Modération
-  isFlagged        Boolean  @default(false)
-  isVisible        Boolean  @default(true)
-  
+  isFlagged Boolean @default(false)
+  isVisible Boolean @default(true)
+
   // Stats commerciales
-  salesCount       Int      @default(0)
-  revenueCredits   Int      @default(0)
-  
-  uploadDate       DateTime @default(now())
+  salesCount     Int @default(0)
+  revenueCredits Int @default(0)
+
+  uploadDate DateTime @default(now())
 
   // Relations
-  creator          User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  gallery          Gallery?   @relation(fields: [galleryId], references: [id], onDelete: SetNull)
-  postLinks        PostMedia[]
-  
+  creator   User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  gallery   Gallery?    @relation(fields: [galleryId], references: [id], onDelete: SetNull)
+  postLinks PostMedia[]
+
   @@index([creatorId, galleryId])
   @@index([visibility, isVisible])
 }
 
 model Gallery {
-  id               String   @id @default(uuid())
-  creatorId        String
-  title            String
-  description      String?
-  coverUrl         String?
-  
-  visibility       String   @default("free") // "free" | "subscribers" | "paid"
-  priceCredits     Int      @default(0)
-  
-  salesCount       Int      @default(0)
-  revenueCredits   Int      @default(0)
-  isVisible        Boolean  @default(true)
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id          String  @id @default(uuid())
+  creatorId   String
+  title       String
+  description String?
+  coverUrl    String?
+
+  visibility   String @default("free") // "free" | "subscribers" | "paid"
+  priceCredits Int    @default(0)
+
+  salesCount     Int     @default(0)
+  revenueCredits Int     @default(0)
+  isVisible      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  creator          User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  items            MediaItem[]
-  
+  creator User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  items   MediaItem[]
+
   @@index([creatorId])
 }
 
@@ -354,62 +377,61 @@ model Gallery {
 // ============================================================
 
 model Subscription {
-  id               String    @id @default(uuid())
-  clientId         String
-  creatorId        String
-  tier             String    @default("normal") // "normal" | "plus"
-  priceCredits     Int
-  
-  status           String    @default("active") // "active" | "cancelled" | "expired"
-  startedAt        DateTime  @default(now())
-  renewsAt         DateTime?
-  cancelledAt      DateTime?
-  
+  id           String @id @default(uuid())
+  clientId     String
+  creatorId    String
+  tier         String @default("normal") // "normal" | "plus"
+  priceCredits Int
+
+  status      String    @default("active") // "active" | "cancelled" | "expired"
+  startedAt   DateTime  @default(now())
+  renewsAt    DateTime?
+  cancelledAt DateTime?
+
   // Relations
-  client           User      @relation("ClientSubscriptions", fields: [clientId], references: [id], onDelete: Cascade)
-  creator          User      @relation("CreatorSubscriptions", fields: [creatorId], references: [id], onDelete: Cascade)
+  client  User @relation("ClientSubscriptions", fields: [clientId], references: [id], onDelete: Cascade)
+  creator User @relation("CreatorSubscriptions", fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, creatorId])
   @@index([creatorId, status])
 }
 
 model Purchase {
-  id               String   @id @default(uuid())
-  clientId         String
-  creatorId        String
-  itemType         String   // "media" | "gallery" | "message_media" | "post"
-  itemId           String   // ID de l'item acheté
-  priceCredits     Int
-  purchasedAt      DateTime @default(now())
+  id           String   @id @default(uuid())
+  clientId     String
+  creatorId    String
+  itemType     String // "media" | "gallery" | "message_media" | "post"
+  itemId       String // ID de l'item acheté
+  priceCredits Int
+  purchasedAt  DateTime @default(now())
 
   // Relations
-  client           User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client User @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, creatorId])
   @@index([itemType, itemId])
 }
 
 model Transaction {
-  id               String    @id @default(uuid())
-  userId           String?   // Peut être client ou créateur
-  type             String    // "credit_purchase" | "subscription" | "tip" | "media" | "gallery" | "show" | "refund" | "withdrawal"
-  amountCredits    Int?      // Montant en crédits
-  amountEur        Float?    // Montant en euros
-  commissionEur    Float     @default(0)
-  commissionRate   Float?    // Taux de commission (ex: 0.20 pour 20%)
-  
-  status           String    @default("completed") // "pending" | "completed" | "failed" | "refunded"
-  referenceId      String?   // ID de l'objet lié (purchase, subscription, etc.)
-  paymentMethod    String?   // "stripe" | "credits" | "bank_transfer"
-  paymentIntentId  String?   // Stripe Payment Intent ID
-  
-  refundedAt       DateTime?
-  refundReason     String?
-  
-  createdAt        DateTime  @default(now())
+  id              String  @id @default(uuid())
+  userId          String? // Peut être client ou créateur
+  type            String // "credit_purchase" | "subscription" | "tip" | "media" | "gallery" | "show" | "refund" | "withdrawal"
+  amountCoins     Int // Montant payé ou gagné en Pièces
+  commissionCoins Int     @default(0) // Commission prise par la plateforme
+  commissionRate  Float? // Taux de commission (ex: 0.20 pour 20%)
+
+  status          String  @default("completed") // "pending" | "completed" | "failed" | "refunded"
+  referenceId     String? // ID de l'objet lié (purchase, subscription, etc.)
+  paymentMethod   String? // "stripe" | "credits" | "bank_transfer"
+  paymentIntentId String? // Stripe Payment Intent ID
+
+  refundedAt   DateTime?
+  refundReason String?
+
+  createdAt DateTime @default(now())
 
   // Relations
-  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([type, status])
@@ -420,43 +442,43 @@ model Transaction {
 // ============================================================
 
 model ShowRequest {
-  id               String    @id @default(uuid())
-  clientId         String
-  creatorId        String
-  typeLabel        String    // Nom du type de show demandé
-  description      String?
-  priceCredits     Int
-  
-  status           String    @default("pending") // "pending" | "accepted" | "refused" | "completed"
-  refusalReason    String?
-  
-  requestedAt      DateTime  @default(now())
-  respondedAt      DateTime?
-  completedAt      DateTime?
+  id           String  @id @default(uuid())
+  clientId     String
+  creatorId    String
+  typeLabel    String // Nom du type de show demandé
+  description  String?
+  priceCredits Int
+
+  status        String  @default("pending") // "pending" | "accepted" | "refused" | "completed"
+  refusalReason String?
+
+  requestedAt DateTime  @default(now())
+  respondedAt DateTime?
+  completedAt DateTime?
 
   // Relations
-  client           User      @relation("ClientShowRequests", fields: [clientId], references: [id], onDelete: Cascade)
-  creator          User      @relation("CreatorShowRequests", fields: [creatorId], references: [id], onDelete: Cascade)
+  client  User @relation("ClientShowRequests", fields: [clientId], references: [id], onDelete: Cascade)
+  creator User @relation("CreatorShowRequests", fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId, status])
   @@index([clientId])
 }
 
 model ShowType {
-  id               String   @id @default(uuid())
-  creatorId        String
-  emoji            String?
-  title            String
-  description      String?
-  priceCredits     Int
-  durationLabel    String?  // Ex: "30 min", "1 heure"
-  availability     String   @default("always") // "always" | "on_demand" | "disabled"
-  isActive         Boolean  @default(true)
-  sortOrder        Int      @default(0)
-  createdAt        DateTime @default(now())
+  id            String   @id @default(uuid())
+  creatorId     String
+  emoji         String?
+  title         String
+  description   String?
+  priceCredits  Int
+  durationLabel String? // Ex: "30 min", "1 heure"
+  availability  String   @default("always") // "always" | "on_demand" | "disabled"
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
 
   // Relations
-  creator          User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId, isActive])
 }
@@ -466,18 +488,18 @@ model ShowType {
 // ============================================================
 
 model AutoMessage {
-  id               String   @id @default(uuid())
-  creatorId        String
-  trigger          String   // "new_message_offline" | "new_subscriber" | "anniversary_1m" | "inactivity_7d" | "after_tip"
-  content          String
-  delayMinutes     Int      @default(0)
-  mediaId          String?  // LibraryItem ID (optionnel)
-  isActive         Boolean  @default(true)
-  sentCount        Int      @default(0)
-  createdAt        DateTime @default(now())
+  id           String   @id @default(uuid())
+  creatorId    String
+  trigger      String // "new_message_offline" | "new_subscriber" | "anniversary_1m" | "inactivity_7d" | "after_tip"
+  content      String
+  delayMinutes Int      @default(0)
+  mediaId      String? // LibraryItem ID (optionnel)
+  isActive     Boolean  @default(true)
+  sentCount    Int      @default(0)
+  createdAt    DateTime @default(now())
 
   // Relations
-  creator          User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@unique([creatorId, trigger])
 }
@@ -487,50 +509,51 @@ model AutoMessage {
 // ============================================================
 
 model KycSubmission {
-  id               String   @id @default(uuid())
-  creatorId        String
-  firstName        String
-  lastName         String
-  birthDate        DateTime
-  address          String
-  city             String
-  postalCode       String
-  country          String
-  idDocumentUrl    String   // URL du document d'identité uploadé
-  idDocumentType   String   // "passport" | "id_card" | "driver_license"
-  
-  status           String   @default("pending") // "pending" | "approved" | "rejected"
-  rejectionReason  String?
-  reviewedAt       DateTime?
-  reviewedBy       String?  // Admin user ID
-  
-  submittedAt      DateTime @default(now())
+  id             String   @id @default(uuid())
+  creatorId      String
+  firstName      String
+  lastName       String
+  birthDate      DateTime
+  address        String
+  city           String
+  postalCode     String
+  country        String
+  idDocumentUrl  String // URL du document d'identité uploadé
+  idDocumentType String // "passport" | "id_card" | "driver_license"
+
+  status          String    @default("pending") // "pending" | "approved" | "rejected"
+  rejectionReason String?
+  reviewedAt      DateTime?
+  reviewedBy      String? // Admin user ID
+
+  submittedAt DateTime @default(now())
 
   // Relations
-  creator          User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId])
 }
 
 model Withdrawal {
-  id               String    @id @default(uuid())
-  creatorId        String
-  amountCredits    Int       // Montant en crédits
-  amountEur        Float     // Montant en euros
-  commissionEur    Float     // Commission plateforme
-  netEur           Float     // Montant net versé au créateur
-  ibanSnapshot     String?   // IBAN utilisé pour ce retrait
-  
-  status           String    @default("pending") // "pending" | "processing" | "completed" | "rejected"
-  rejectionReason  String?
-  adminId          String?   // Admin qui a traité
-  
-  requestedAt      DateTime  @default(now())
-  processedAt      DateTime?
-  completedAt      DateTime?
+  id            String @id @default(uuid())
+  creatorId     String
+  amountCoins   Int // Montant en pièces retiré par le créateur
+  payoutMethod  String // "BANK" | "CRYPTO" | "PAXFUL"
+  payoutDetails String // IBAN complet, ou Adresse Crypto TRC20, ou Username Paxful
+  amountEur     Float // Montant indicatif en euros calculé au moment de la demande
+  commissionEur Float // Commission plateforme en euros (frais bancaires/crypto)
+  netEur        Float // Montant net versé réellement au créateur
+
+  status          String  @default("pending") // "pending" | "processing" | "completed" | "rejected"
+  rejectionReason String?
+  adminId         String? // Admin qui a traité
+
+  requestedAt DateTime  @default(now())
+  processedAt DateTime?
+  completedAt DateTime?
 
   // Relations
-  creator          User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId, status])
 }
@@ -540,15 +563,15 @@ model Withdrawal {
 // ============================================================
 
 model CreatorNote {
-  id               String   @id @default(uuid())
-  creatorId        String
-  clientId         String
-  content          String
-  updatedAt        DateTime @updatedAt
+  id        String   @id @default(uuid())
+  creatorId String
+  clientId  String
+  content   String
+  updatedAt DateTime @updatedAt
 
   // Relations
-  creator          User     @relation("CreatorNotes", fields: [creatorId], references: [id], onDelete: Cascade)
-  client           User     @relation("ClientNotes", fields: [clientId], references: [id], onDelete: Cascade)
+  creator User @relation("CreatorNotes", fields: [creatorId], references: [id], onDelete: Cascade)
+  client  User @relation("ClientNotes", fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([creatorId, clientId])
 }
@@ -558,18 +581,18 @@ model CreatorNote {
 // ============================================================
 
 model Notification {
-  id               String   @id @default(uuid())
-  recipientId      String
-  type             String   // "new_message" | "new_like" | "new_comment" | "new_subscriber" | "withdrawal_approved" | etc.
-  title            String
-  message          String
-  linkUrl          String?  // URL vers la ressource concernée
-  
-  isRead           Boolean  @default(false)
-  createdAt        DateTime @default(now())
+  id          String  @id @default(uuid())
+  recipientId String
+  type        String // "new_message" | "new_like" | "new_comment" | "new_subscriber" | "withdrawal_approved" | etc.
+  title       String
+  message     String
+  linkUrl     String? // URL vers la ressource concernée
+
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   // Relations
-  recipient        User     @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, isRead, createdAt])
 }
@@ -579,24 +602,52 @@ model Notification {
 // ============================================================
 
 model AdminLog {
-  id               String   @id @default(uuid())
-  adminId          String   // User ID de l'admin
-  action           String   // "user_suspended" | "kyc_approved" | "withdrawal_processed" | etc.
-  targetType       String?  // "user" | "post" | "media" | "withdrawal"
-  targetId         String?  // ID de la ressource concernée
-  details          String?  // JSON avec détails
-  ipAddress        String?
-  createdAt        DateTime @default(now())
+  id         String   @id @default(uuid())
+  adminId    String // User ID de l'admin
+  action     String // "user_suspended" | "kyc_approved" | "withdrawal_processed" | etc.
+  targetType String? // "user" | "post" | "media" | "withdrawal"
+  targetId   String? // ID de la ressource concernée
+  details    String? // JSON avec détails
+  ipAddress  String?
+  createdAt  DateTime @default(now())
 
   @@index([adminId, createdAt])
   @@index([targetType, targetId])
 }
 
 model PlatformSettings {
-  id               String   @id @default(uuid())
-  key              String   @unique // "commission_rate" | "min_withdrawal" | "credit_euro_rate" | etc.
-  value            String   // Stocké en JSON
-  description      String?
-  updatedAt        DateTime @updatedAt
-  updatedBy        String?  // Admin user ID
+  id          String   @id @default(uuid())
+  key         String   @unique // "commission_rate" | "min_withdrawal" | "credit_euro_rate" | etc.
+  value       String // Stocké en JSON
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String? // Admin user ID
+}
+
+// ============================================================
+// 13. DEMANDES D'ACHAT DE PIÈCES (Formulaires Clients)
+// ============================================================
+
+model PurchaseRequest {
+  id       String @id @default(uuid())
+  clientId String
+  client   User   @relation(fields: [clientId], references: [id])
+
+  // Combien il veut et combien il a payé
+  coinsRequested Int
+  amountPaidRaw  Float // Ex: 10.00
+  currency       String // Ex: "EUR", "USD"
+
+  // Méthode de paiement
+  paymentMethod String // "PAXFUL", "CRYPTO_USDT", "CRYPTO_BTC", "BANK_TRANSFER"
+  transactionId String? // ID de transaction ou note du client
+  proofImageUrl String? // Capture d'écran (optionnel)
+
+  // Modération
+  status          String  @default("pending") // "pending", "approved", "rejected"
+  rejectionReason String?
+  adminId         String? // Admin qui a traité la demande
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

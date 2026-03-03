@@ -4,9 +4,9 @@ import { Stories } from '../components/Stories';
 import { Feed } from '../components/Feed';
 
 interface OutletContext {
-  openChat: (id: number) => void;
+  openChat: (id: string | number) => void;
   isChatOpen: boolean;
-  activeChatId: number | null;
+  activeChatId: string | number | null;
 }
 
 export const HomePage = () => {

@@ -11,13 +11,13 @@ import { Requests } from '@/components/Requests';
 import { Settings } from '@/components/Settings';
 import { Library } from '@/components/Library';
 import { Auth } from '@/components/Auth';
-import { CURRENT_USER, CONVERSATIONS } from '@/data/mockData';
+import { api } from '@/services/api';
 import { Menu } from 'lucide-react';
+import { useSocket } from './hooks/useSocket';
 
 export default function App() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Afficher un loader pendant la vérification
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F0]">
@@ -29,7 +29,6 @@ export default function App() {
     );
   }
 
-  // Si pas authentifié, afficher la page de connexion
   if (!isAuthenticated) {
     return <Auth onLoginSuccess={() => window.location.reload()} />;
   }
@@ -37,17 +36,73 @@ export default function App() {
   return <AuthenticatedApp />;
 }
 
+// Type pour les conversations réelles de l'API
+interface RealConversation {
+  id: string;           // UUID de la conversation (pour socket)
+  clientId: string;     // UUID du client
+  isOnline: boolean;    // Statut de présence depuis Redis
+  client: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  } | null;
+  lastMessage?: { content: string; createdAt: string; senderId: string; isRead: boolean; } | null;
+  unreadCount: number;
+  updatedAt: string;
+}
+
 function AuthenticatedApp() {
   const { user } = useAuth();
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(CONVERSATIONS[0]?.userId || null);
+  // selectedConversationId = conversation UUID (pas user ID)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [realConversations, setRealConversations] = useState<RealConversation[]>([]);
 
-  // Mobile overlay states
   const [isSidebarOpen, setIsSidebarOpen]           = useState(false);
   const [isSidebarRightOpen, setIsSidebarRightOpen] = useState(false);
 
   const location = useLocation();
   const currentPath = location.pathname;
   const activeTab = currentPath === '/' ? 'dashboard' : currentPath.substring(1).split('/')[0];
+
+  // Charger les vraies conversations depuis l'API
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const res = await api.get('/api/creator/conversations');
+        const convs: RealConversation[] = res.data.conversations || [];
+        setRealConversations(convs);
+        // Sélectionner la première conversation par défaut
+        if (convs.length > 0 && !selectedConversationId) {
+          setSelectedConversationId(convs[0].id);
+        }
+      } catch (e) {
+        console.error('Erreur chargement conversations créateur:', e);
+      }
+    };
+    fetchConversations();
+  }, []);
+
+  // Écouter les événements de présence WebSocket globalement
+  const { on } = useSocket();
+  useEffect(() => {
+    const unsubOnline = on('user:online', (data: { userId: string }) => {
+      setRealConversations(prev => prev.map(c => 
+        c.clientId === data.userId ? { ...c, isOnline: true } : c
+      ));
+    });
+
+    const unsubOffline = on('user:offline', (data: { userId: string }) => {
+      setRealConversations(prev => prev.map(c => 
+        c.clientId === data.userId ? { ...c, isOnline: false } : c
+      ));
+    });
+
+    return () => {
+      unsubOnline?.();
+      unsubOffline?.();
+    };
+  }, [on]);
 
   return (
     <div className="flex min-h-screen bg-[#F5F5F0] font-sans text-gray-900">
@@ -56,7 +111,7 @@ function AuthenticatedApp() {
       <SidebarLeft
         unreadMessages={2}
         unreadNotifications={3}
-        balance={user?.balance || 0}
+        balance={user?.coinBalance || 0}
         userAvatar={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop'}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -85,7 +140,6 @@ function AuthenticatedApp() {
              activeTab === 'requests' ? 'Demandes' :
              activeTab === 'settings' ? 'Paramètres' : ''}
           </span>
-          {/* Right hamburger (Messages only) — on mobile topbar too */}
           {activeTab === 'messages' && (
             <button
               onClick={() => setIsSidebarRightOpen(true)}
@@ -105,7 +159,7 @@ function AuthenticatedApp() {
           <Route path="/messages" element={
             <Messages
               selectedConversationId={selectedConversationId}
-              conversations={CONVERSATIONS}
+              realConversations={realConversations}
               onSelectConversation={setSelectedConversationId}
               onOpenClientList={() => setIsSidebarRightOpen(true)}
             />
@@ -120,7 +174,7 @@ function AuthenticatedApp() {
       {/* ── Right Sidebar ── */}
       <SidebarRight
         activeTab={activeTab}
-        conversations={CONVERSATIONS}
+        realConversations={realConversations}
         selectedConversationId={selectedConversationId}
         onSelectConversation={setSelectedConversationId}
         isMobileOpen={isSidebarRightOpen}
@@ -129,3 +183,4 @@ function AuthenticatedApp() {
     </div>
   );
 }
+

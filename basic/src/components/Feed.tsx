@@ -4,7 +4,7 @@ const posts = [
   {
     id: 1,
     image: 'https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=600&q=80',
-    user: { name: 'thesandfurra', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80', status: 'online' },
+    user: { name: 'bella_creator', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80', status: 'online' },
     likes: '87k',
     comments: 132,
     isVideo: false,
@@ -267,7 +267,7 @@ export const Feed = ({ onOpenChat, isChatActive, onClickCard }: FeedProps) => {
                   <span>{post.likes}</span>
                 </div>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); onOpenChat((post.id % 7) + 1); }} 
+                  onClick={(e) => { e.stopPropagation(); /* onOpenChat mock disabled */ }} 
                   className="flex items-center gap-1 hover:text-blue-500 transition-colors"
                 >
                   <MessageCircle size={16} />

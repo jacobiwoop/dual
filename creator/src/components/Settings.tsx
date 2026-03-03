@@ -6,6 +6,7 @@ import { CreateShowModal } from '@/components/CreateShowModal';
 import { WithdrawModal } from '@/components/WithdrawModal';
 
 export function Settings() {
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = useState('auto-messages');
 
   const sections = [
@@ -56,7 +57,16 @@ export function Settings() {
       {/* Modals */}
       <AutoMessageModal isOpen={isAutoMsgModalOpen} onClose={() => setIsAutoMsgModalOpen(false)} onSave={(m) => console.log('AutoMsg:', m)} />
       <CreateShowModal isOpen={isShowModalOpen} onClose={() => setIsShowModalOpen(false)} onSave={(s) => console.log('Show:', s)} />
-      <WithdrawModal isOpen={isWithdrawModalOpen} onClose={() => setIsWithdrawModalOpen(false)} />
+      <WithdrawModal 
+         isOpen={isWithdrawModalOpen} 
+         onClose={() => setIsWithdrawModalOpen(false)} 
+         availableCoins={user?.coinBalance || 0}
+         onSuccess={() => {
+           setIsWithdrawModalOpen(false);
+           alert('Demande de retrait confirmée !');
+           window.location.reload();
+         }}
+      />
     </div>
   );
 }
@@ -236,6 +246,42 @@ function PrivacySettings() {
 }
 
 function PaymentsSettings({ onWithdraw }: { onWithdraw: () => void }) {
+  const { user } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [method, setMethod] = useState(user?.preferredPayoutMethod || 'BANK');
+  const [iban, setIban] = useState(user?.iban || '');
+  const [cryptoAddress, setCryptoAddress] = useState(user?.cryptoAddress || '');
+  const [paxfulUsername, setPaxfulUsername] = useState(user?.paxfulUsername || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveConfig = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('creator_token');
+      await fetch('http://localhost:3001/api/creator/profile/payout-settings', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          preferredPayoutMethod: method,
+          iban: method === 'BANK' ? iban : undefined,
+          cryptoAddress: method === 'CRYPTO' ? cryptoAddress : undefined,
+          cryptoNetwork: method === 'CRYPTO' ? 'TRC20' : undefined,
+          paxfulUsername: method === 'PAXFUL' ? paxfulUsername : undefined,
+        })
+      });
+      alert('Informations de paiement sauvegardées !');
+      setIsEditing(false);
+      window.location.reload();
+    } catch (err) {
+      alert('Erreur réseau');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
       <h2 className="text-xl font-bold text-gray-900 mb-6">Paiements</h2>
@@ -243,8 +289,8 @@ function PaymentsSettings({ onWithdraw }: { onWithdraw: () => void }) {
       <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 mb-6">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Solde disponible</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">56,874.00 €</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Solde de Pièces (Coins)</p>
+            <p className="text-3xl font-bold text-emerald-600 mt-1">{(user?.coinBalance || 0).toLocaleString('fr-FR')} 🪙</p>
           </div>
           <button
             onClick={onWithdraw}
@@ -253,29 +299,37 @@ function PaymentsSettings({ onWithdraw }: { onWithdraw: () => void }) {
             Retirer
           </button>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <CreditCard size={16} />
-          <span>IBAN: FR76 **** **** **** 9821</span>
-          <button className="text-purple-600 font-medium ml-2">Modifier</button>
-        </div>
+        
+        {!isEditing ? (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <CreditCard size={16} />
+            <span>Méthode: {user?.preferredPayoutMethod || 'Non configurée'}</span>
+            <button onClick={() => setIsEditing(true)} className="text-purple-600 font-medium ml-2">Modifier</button>
+          </div>
+        ) : (
+          <div className="mt-4 p-4 bg-white border border-gray-200 rounded-xl space-y-4">
+            <h4 className="font-bold text-gray-900">Configurer mes retraits</h4>
+            <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg outline-none">
+              <option value="BANK">Virement Bancaire (IBAN)</option>
+              <option value="CRYPTO">Crypto (USDT TRC20)</option>
+              <option value="PAXFUL">Paxful</option>
+            </select>
+            
+            {method === 'BANK' && <input type="text" placeholder="IBAN (Ex: FR76...)" value={iban} onChange={e => setIban(e.target.value)} className="w-full p-2 border rounded-lg" />}
+            {method === 'CRYPTO' && <input type="text" placeholder="Adresse USDT TRC20" value={cryptoAddress} onChange={e => setCryptoAddress(e.target.value)} className="w-full p-2 border rounded-lg" />}
+            {method === 'PAXFUL' && <input type="text" placeholder="Pseudonyme Paxful" value={paxfulUsername} onChange={e => setPaxfulUsername(e.target.value)} className="w-full p-2 border rounded-lg" />}
+            
+            <div className="flex gap-2">
+              <button disabled={saving} onClick={handleSaveConfig} className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold">Enregistrer</button>
+              <button onClick={() => setIsEditing(false)} className="text-gray-500 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">Annuler</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>
-        <h3 className="font-bold text-gray-900 mb-4">Historique</h3>
-        <div className="space-y-3">
-          {[
-            { date: '15 Fév 2024', amount: '4,250.00 €', status: 'Payé' },
-            { date: '01 Fév 2024', amount: '3,800.00 €', status: 'Payé' },
-          ].map((p, i) => (
-            <div key={i} className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl transition-colors">
-              <span className="text-gray-600 text-sm">{p.date}</span>
-              <div className="flex items-center gap-4">
-                <span className="font-bold text-gray-900">{p.amount}</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">{p.status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+        <h3 className="font-bold text-gray-900 mb-4">Historique des transactions</h3>
+        <p className="text-sm text-gray-500 italic mb-3">L'historique complet est en cours d'intégration...</p>
       </div>
     </div>
   );

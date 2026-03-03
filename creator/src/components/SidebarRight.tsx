@@ -3,8 +3,6 @@ import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Conversation } from '@/data/mockData';
-
 type Filter = 'all' | 'unread' | 'plus' | 'normal' | 'vip';
 
 const FILTERS: { id: Filter; label: string }[] = [
@@ -15,9 +13,19 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: 'vip',    label: '⭐ VIP' },
 ];
 
+interface RealConversation {
+  id: string;
+  clientId: string;
+  isOnline: boolean;
+  client: { id: string; username: string; displayName: string; avatarUrl: string | null; } | null;
+  lastMessage?: { content: string; createdAt: string; senderId: string; isRead: boolean; } | null;
+  unreadCount: number;
+  updatedAt: string;
+}
+
 interface SidebarRightProps {
   activeTab: string;
-  conversations: Conversation[];
+  realConversations: RealConversation[];
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
   // Mobile overlay
@@ -27,7 +35,7 @@ interface SidebarRightProps {
 
 export function SidebarRight({
   activeTab,
-  conversations,
+  realConversations,
   selectedConversationId,
   onSelectConversation,
   isMobileOpen = false,
@@ -38,22 +46,13 @@ export function SidebarRight({
 
   // ⚠️ Hooks MUST be called before any early return
   const filtered = useMemo(() => {
-    return conversations.filter(conv => {
-      const matchesSearch = search === '' ||
-        conv.user.displayName.toLowerCase().includes(search.toLowerCase()) ||
-        conv.user.username.toLowerCase().includes(search.toLowerCase());
-
-      const matchesFilter =
-        filter === 'all'    ? true :
-        filter === 'unread' ? conv.unreadCount > 0 :
-        filter === 'plus'   ? conv.user.subscriptionTier === 'Plus' :
-        filter === 'normal' ? conv.user.subscriptionTier === 'Normal' :
-        filter === 'vip'    ? conv.user.subscriptionTier === 'VIP' :
-        true;
-
-      return matchesSearch && matchesFilter;
+    return realConversations.filter(conv => {
+      if (!conv.client) return true;
+      return search === '' ||
+        conv.client.displayName.toLowerCase().includes(search.toLowerCase()) ||
+        conv.client.username.toLowerCase().includes(search.toLowerCase());
     });
-  }, [conversations, filter, search]);
+  }, [realConversations, filter, search]);
 
   const handleSelect = (id: string) => {
     onSelectConversation(id);
@@ -67,7 +66,7 @@ export function SidebarRight({
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-gray-900">Messages</h2>
           <div className="flex items-center gap-2">
-            {filtered.length !== conversations.length && (
+            {filtered.length !== realConversations.length && (
               <span className="text-xs text-purple-600 font-semibold">{filtered.length} résultat{filtered.length > 1 ? 's' : ''}</span>
             )}
             {/* Close button (mobile) */}
@@ -105,11 +104,6 @@ export function SidebarRight({
               )}
             >
               {f.label}
-              {f.id === 'unread' && conversations.filter(c => c.unreadCount > 0).length > 0 && (
-                <span className="ml-1 bg-red-500 text-white rounded-full px-1 text-[9px]">
-                  {conversations.filter(c => c.unreadCount > 0).length}
-                </span>
-              )}
             </button>
           ))}
         </div>
@@ -123,11 +117,13 @@ export function SidebarRight({
           </div>
         ) : (
           filtered.map(conv => {
-            const isSelected = selectedConversationId === conv.userId;
+            const isSelected = selectedConversationId === conv.id;
+            const displayName = conv.client?.displayName || conv.client?.username || 'Client';
+            const avatarUrl = conv.client?.avatarUrl;
             return (
               <button
-                key={conv.userId}
-                onClick={() => handleSelect(conv.userId)}
+                key={conv.id}
+                onClick={() => handleSelect(conv.id)}
                 className={cn(
                   "w-full p-3 rounded-xl flex items-start gap-3 transition-all duration-200 group relative",
                   isSelected
@@ -136,28 +132,26 @@ export function SidebarRight({
                 )}
               >
                 <div className="relative shrink-0">
-                  <img src={conv.user.avatar} alt={conv.user.username} className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" />
-                  {conv.user.isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
-                  )}
+                  <img src={avatarUrl || `https://ui-avatars.com/api/?name=${displayName}&background=7c3aed&color=fff`} alt={displayName} className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" />
+                  <span className={cn(
+                    "absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full shadow-sm",
+                    conv.isOnline ? "bg-lime-500" : "bg-gray-400"
+                  )} />
                 </div>
 
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex justify-between items-baseline mb-0.5">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className={cn("font-semibold text-sm truncate", isSelected ? "text-purple-900" : "text-gray-900")}>
-                        {conv.user.displayName}
-                      </span>
-                      {conv.user.subscriptionTier === 'Plus' && <span className="text-[9px] text-purple-500 flex-shrink-0">💎</span>}
-                      {conv.user.subscriptionTier === 'VIP'  && <span className="text-[9px] text-amber-500 flex-shrink-0">⭐</span>}
-                    </div>
-                    <span className="text-[10px] text-gray-400 shrink-0 ml-1">
-                      {formatDistanceToNow(conv.lastMessage.timestamp, { addSuffix: false, locale: fr })}
+                    <span className={cn("font-semibold text-sm truncate", isSelected ? "text-purple-900" : "text-gray-900")}>
+                      {displayName}
                     </span>
+                    {conv.lastMessage && (
+                      <span className="text-[10px] text-gray-400 shrink-0 ml-1">
+                        {formatDistanceToNow(new Date(conv.lastMessage.createdAt), { addSuffix: false, locale: fr })}
+                      </span>
+                    )}
                   </div>
                   <p className={cn("text-xs truncate leading-relaxed", conv.unreadCount > 0 ? "font-semibold text-gray-900" : "text-gray-500")}>
-                    {conv.lastMessage.senderId === 'me' && <span className="text-purple-500 mr-1">Vous:</span>}
-                    {conv.lastMessage.text}
+                    {conv.lastMessage ? conv.lastMessage.content : 'Nouvelle conversation'}
                   </p>
                 </div>
 

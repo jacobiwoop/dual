@@ -4,6 +4,7 @@ import { feedController } from '../controllers/client/feed.controller';
 import { creatorsController } from '../controllers/client/creators.controller';
 import { clientMessagesController } from '../controllers/client/messages.controller';
 import { creditsController } from '../controllers/client/credits.controller';
+import { clientPaymentsController } from '../controllers/client/payments.controller';
 import { validateBody, validate } from '../middleware/validate';
 import { messageLimiter } from '../middleware/rateLimiter';
 import { 
@@ -55,5 +56,11 @@ router.get('/credits/balance', creditsController.getBalance);
 router.post('/credits/purchase', validateBody(purchaseCreditsSchema), creditsController.purchaseCredits);
 router.get('/credits/history', creditsController.getHistory);
 router.get('/credits/packs', creditsController.getPacks);
+
+// ====================================
+// ACHAT DE PIÈCES (PAYMENTS)
+// ====================================
+router.post('/payments/buy-coins', clientPaymentsController.buyCoins);
+router.get('/payments/history', clientPaymentsController.getPurchaseHistory);
 
 export default router;

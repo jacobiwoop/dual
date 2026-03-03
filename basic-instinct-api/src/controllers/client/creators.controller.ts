@@ -290,21 +290,20 @@ export const creatorsController = {
       return res.status(400).json({ error: 'Déjà abonné à ce créateur' });
     }
 
-    // Prix selon tier
-    const price = tier === 'plus' ? creator.subscriptionPricePlus : creator.subscriptionPrice;
-    const priceCredits = Math.round(price * 10); // 1€ = 10 crédits
+    // Prix selon tier (déjà en pièces)
+    const priceCoins = tier === 'plus' ? creator.subscriptionPricePlus : creator.subscriptionPrice;
 
-    // Vérifier que le client a assez de crédits
+    // Vérifier que le client a assez de pièces
     const client = await prisma.user.findUnique({
       where: { id: clientId },
-      select: { balanceCredits: true },
+      select: { coinBalance: true },
     });
 
-    if (!client || client.balanceCredits < priceCredits) {
+    if (!client || client.coinBalance < priceCoins) {
       return res.status(400).json({
         error: 'Crédits insuffisants',
-        required: priceCredits,
-        available: client?.balanceCredits || 0,
+        required: priceCoins,
+        available: client?.coinBalance || 0,
       });
     }
 
@@ -320,13 +319,13 @@ export const creatorsController = {
         clientId,
         creatorId: id as string,
         tier,
-        priceCredits,
+        priceCredits: priceCoins,
         status: 'active',
         renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 jours
       },
       update: {
         tier,
-        priceCredits,
+        priceCredits: priceCoins,
         status: 'active',
         startedAt: new Date(),
         renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -338,18 +337,19 @@ export const creatorsController = {
     await prisma.user.update({
       where: { id: clientId },
       data: {
-        balanceCredits: { decrement: priceCredits },
-        totalSpent: { increment: price },
+        coinBalance: { decrement: priceCoins },
+        totalSpent: { increment: priceCoins },
       },
     });
 
     // Créditer le créateur (80% après commission)
-    const creatorRevenue = price * 0.8;
+    const creatorRevenueCoins = Math.floor(priceCoins * 0.8);
+    const commissionCoins = priceCoins - creatorRevenueCoins;
     await prisma.user.update({
       where: { id: id as string },
       data: {
-        balance: { increment: creatorRevenue },
-        totalEarned: { increment: creatorRevenue },
+        coinBalance: { increment: creatorRevenueCoins },
+        totalEarned: { increment: creatorRevenueCoins },
       },
     });
 
@@ -358,9 +358,8 @@ export const creatorsController = {
       data: {
         userId: clientId,
         type: 'subscription',
-        amountCredits: priceCredits,
-        amountEur: price,
-        commissionEur: price * 0.2,
+        amountCoins: priceCoins,
+        commissionCoins: commissionCoins,
         commissionRate: 0.2,
         status: 'completed',
         referenceId: subscription.id,
