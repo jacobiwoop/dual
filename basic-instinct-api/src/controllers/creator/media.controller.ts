@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { r2Client, R2_BUCKET_NAME, deleteFromR2, extractR2Key } from '../../lib/r2';
 import { prisma } from '../../lib/prisma';
@@ -44,10 +44,32 @@ export const mediaController = {
         },
       });
 
-      // No need to sign public URLs if they are served via R2 dev/public domain directly
-      const serialized = items.map(item => ({
-        ...item,
-        fileSizeBytes: item.fileSizeBytes !== null ? Number(item.fileSizeBytes) : null,
+      // Sign URLs for MediaItems
+      const serialized = await Promise.all(items.map(async (item) => {
+        let displayUrl = item.url;
+        let displayThumbnailUrl = item.thumbnailUrl;
+
+        try {
+          if (item.url) {
+            const key = extractR2Key(item.url);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          }
+          if (item.thumbnailUrl) {
+            const key = extractR2Key(item.thumbnailUrl);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayThumbnailUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          }
+        } catch {
+          // Fallback to raw URLs
+        }
+
+        return {
+          ...item,
+          url: displayUrl,
+          thumbnailUrl: displayThumbnailUrl,
+          fileSizeBytes: item.fileSizeBytes !== null ? Number(item.fileSizeBytes) : null,
+        };
       }));
 
       res.json({
@@ -76,10 +98,97 @@ export const mediaController = {
         orderBy: { createdAt: 'desc' },
       });
 
-      res.json({ galleries });
+      // Sign coverUrl for Galleries
+      const serializedGalleries = await Promise.all(galleries.map(async (gallery) => {
+        let displayCoverUrl = gallery.coverUrl;
+        if (gallery.coverUrl) {
+          try {
+            const key = extractR2Key(gallery.coverUrl);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayCoverUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          } catch {
+            // Fallback
+          }
+        }
+        return {
+          ...gallery,
+          coverUrl: displayCoverUrl,
+        };
+      }));
+
+      res.json({ galleries: serializedGalleries });
     } catch (e: any) {
       logger.error('Error fetching galleries:', e);
       res.status(500).json({ error: 'Erreur lors de la récupération des galeries' });
+    }
+  },
+
+  // GET /api/creator/media/galleries/:id
+  // Détails d'une galerie + ses médias
+  async getGalleryDetails(req: Request, res: Response) {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+    const creatorId = req.user.userId;
+    const { id } = req.params;
+
+    try {
+      const gallery = await prisma.gallery.findFirst({
+        where: { id, creatorId },
+        include: {
+          items: {
+            orderBy: { uploadDate: 'desc' },
+          },
+        },
+      });
+
+      if (!gallery) {
+        return res.status(404).json({ error: 'Galerie introuvable' });
+      }
+
+      // Signer l'URL de couverture
+      let displayCoverUrl = gallery.coverUrl;
+      if (gallery.coverUrl) {
+        try {
+          const key = extractR2Key(gallery.coverUrl);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          displayCoverUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        } catch {}
+      }
+
+      // Signer les URLs des médias internes
+      const serializedItems = await Promise.all(gallery.items.map(async (item) => {
+        let displayUrl = item.url;
+        let displayThumbnailUrl = item.thumbnailUrl;
+        try {
+          if (item.url) {
+            const key = extractR2Key(item.url);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          }
+          if (item.thumbnailUrl) {
+            const key = extractR2Key(item.thumbnailUrl);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayThumbnailUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          }
+        } catch {}
+
+        return {
+          ...item,
+          url: displayUrl,
+          thumbnailUrl: displayThumbnailUrl,
+          fileSizeBytes: item.fileSizeBytes !== null ? Number(item.fileSizeBytes) : null,
+        };
+      }));
+
+      res.json({
+        gallery: {
+          ...gallery,
+          coverUrl: displayCoverUrl,
+          items: serializedItems
+        }
+      });
+    } catch (e: any) {
+      logger.error('Error fetching gallery details:', e);
+      res.status(500).json({ error: 'Erreur lors de la récupération de la galerie' });
     }
   },
 
@@ -114,6 +223,48 @@ export const mediaController = {
     } catch (e: any) {
       logger.error('Error creating gallery:', e);
       res.status(500).json({ error: 'Erreur lors de la création de la galerie' });
+    }
+  },
+
+  // PUT /api/creator/media/galleries/:id
+  // Modifier une galerie
+  async updateGallery(req: Request, res: Response) {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+    const creatorId = req.user.userId;
+    const { id } = req.params;
+    
+    try {
+      const { title, description, priceCredits, visibility, coverKey } = req.body;
+      
+      const existing = await prisma.gallery.findFirst({
+        where: { id, creatorId }
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Galerie introuvable' });
+      }
+
+      let dataToUpdate: any = { title, description, priceCredits, visibility };
+
+      if (coverKey !== undefined) {
+        if (coverKey === null) {
+          // L'utilisateur supprime la couverture
+          dataToUpdate.coverUrl = null;
+        } else {
+          const publicUrl = process.env.R2_PUBLIC_URL || `https://pub-xxxxx.r2.dev`;
+          dataToUpdate.coverUrl = `${publicUrl}/${coverKey}`;
+        }
+      }
+
+      const gallery = await prisma.gallery.update({
+        where: { id },
+        data: dataToUpdate,
+      });
+
+      res.json({ gallery });
+    } catch (e: any) {
+      logger.error('Error updating gallery:', e);
+      res.status(500).json({ error: 'Erreur lors de la modification de la galerie' });
     }
   },
 
@@ -167,46 +318,54 @@ export const mediaController = {
   // POST /api/creator/media/confirm
   // Confirmer l'upload et créer l'entrée en base de données
   async confirmUpload(req: Request, res: Response) {
-    const { key, filename, contentType, size, type, folderId } = req.body;
+    const { key, filename, contentType, size, type, folderId, galleryId } = req.body;
     const creatorId = req.user!.userId;
 
     try {
-      // Vérifier que le fichier a bien été uploadé sur R2
-      // (optionnel mais recommandé)
-      
-      // Construire l'URL publique (si bucket public) ou URL de base
-      const publicUrl = `https://pub-${process.env.R2_ACCOUNT_ID}.r2.dev/${key}`;
-      
-      // Créer l'entrée LibraryItem dans la DB
-      const item = await prisma.libraryItem.create({
-        data: {
-          creatorId,
-          folderId: folderId || null,
-          url: publicUrl, // On stocke l'URL publique complète pour affichage direct
-          type,
-          filename,
-          sizeBytes: BigInt(size),
-          // thumbnailUrl sera ajouté après processing
-        },
-      });
+      const publicUrl = process.env.R2_PUBLIC_URL
+        ? `${process.env.R2_PUBLIC_URL}/${key}`
+        : `https://pub-${process.env.R2_ACCOUNT_ID}.r2.dev/${key}`;
 
-      // Queue le processing asynchrone
-      await queueMediaProcessing(
-        item.id,
-        key,
-        type,
-        'generate-thumbnail'
-      );
+      if (galleryId) {
+        // === Média Public → MediaItem lié à la galerie ===
+        const mediaItem = await prisma.mediaItem.create({
+          data: {
+            creatorId,
+            galleryId,
+            url: publicUrl,
+            type,
+            fileSizeBytes: BigInt(size),
+            visibility: 'free',
+          },
+        });
 
-      logger.info(`Media confirmed and queued for processing: ${item.id}`);
+        logger.info(`MediaItem created for gallery ${galleryId}: ${mediaItem.id}`);
 
-      res.status(201).json({
-        item: {
-          ...item,
-          sizeBytes: size, // Convertir BigInt en number pour JSON
-        },
-        message: 'Upload confirmé. Le média est en cours de traitement.',
-      });
+        res.status(201).json({
+          item: { ...mediaItem, fileSizeBytes: size },
+          message: 'Upload confirmé.',
+        });
+      } else {
+        // === Média Privé → LibraryItem (bibliothèque du créateur) ===
+        const item = await prisma.libraryItem.create({
+          data: {
+            creatorId,
+            folderId: folderId || null,
+            url: publicUrl,
+            type,
+            filename,
+            sizeBytes: BigInt(size),
+          },
+        });
+
+        await queueMediaProcessing(item.id, key, type, 'generate-thumbnail');
+        logger.info(`LibraryItem confirmed and queued: ${item.id}`);
+
+        res.status(201).json({
+          item: { ...item, sizeBytes: size },
+          message: 'Upload confirmé. Le média est en cours de traitement.',
+        });
+      }
     } catch (error: any) {
       logger.error('Error confirming upload:', error);
       res.status(500).json({
@@ -215,6 +374,7 @@ export const mediaController = {
       });
     }
   },
+
 
   // GET /api/creator/media/:id/url
   // Récupérer une URL signée pour accéder à un média privé

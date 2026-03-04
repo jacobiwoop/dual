@@ -56,6 +56,12 @@ export const mediaService = {
     return res.data.galleries;
   },
 
+  // Get single Gallery with contents
+  getGalleryDetails: async (id: string) => {
+    const res = await api.get<{ gallery: Gallery & { items: MediaItem[] } }>(`/api/creator/media/galleries/${id}`);
+    return res.data.gallery;
+  },
+
   // Generate Upload URL
   requestUploadUrl: async (filename: string, contentType: string, size: number, type: 'image' | 'video') => {
     const res = await api.post<{ uploadUrl: string; key: string }>('/api/creator/media/upload-url', {
@@ -81,6 +87,12 @@ export const mediaService = {
   // Create Gallery
   createGallery: async (data: { title: string; description?: string; priceCredits: number; visibility: string; coverKey?: string }) => {
     const res = await api.post<{ gallery: Gallery }>('/api/creator/media/galleries', data);
+    return res.data.gallery;
+  },
+
+  // Update Gallery
+  updateGallery: async (id: string, data: { title?: string; description?: string; priceCredits?: number; visibility?: string; coverKey?: string | null }) => {
+    const res = await api.put<{ gallery: Gallery }>(`/api/creator/media/galleries/${id}`, data);
     return res.data.gallery;
   },
 

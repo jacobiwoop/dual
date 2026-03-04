@@ -26,6 +26,7 @@ export const confirmUploadSchema = z.object({
   size: z.number().min(1),
   type: z.enum(['image', 'video']),
   folderId: z.string().uuid().optional(),
+  galleryId: z.string().uuid().optional(),
 });
 
 export const createMediaFolderSchema = z.object({
@@ -40,3 +41,5 @@ export const createGallerySchema = z.object({
   visibility: z.enum(['free', 'subscribers', 'paid']).default('free'),
   coverKey: z.string().min(1).optional(), // R2 key return by presigned URL upload
 });
+
+export const editGallerySchema = createGallerySchema.partial();

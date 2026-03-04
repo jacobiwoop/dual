@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, Image as ImageIcon, Video, Check } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Video, Check, Loader2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { mediaService } from '@/services/media';
 
 type Visibility = 'free' | 'paid' | 'subscribers';
 
@@ -11,12 +12,14 @@ interface FileItem {
   visibility: Visibility;
   price: number;
   description: string;
+  status: 'idle' | 'uploading' | 'done' | 'error';
 }
 
 interface UploadMediaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload?: (files: FileItem[]) => void;
+  galleryId?: string; // Optional – if set, media gets linked to this gallery
+  onUploaded?: () => void; // Callback to refresh parent after upload
 }
 
 const VISIBILITY_OPTIONS: { value: Visibility; label: string; color: string }[] = [
@@ -30,8 +33,9 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 }
 
-export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModalProps) {
+export function UploadMediaModal({ isOpen, onClose, galleryId, onUploaded }: UploadMediaModalProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -41,6 +45,7 @@ export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModal
       visibility: 'free',
       price: 200,
       description: '',
+      status: 'idle',
     }));
     setFiles(prev => [...prev, ...newItems]);
   }, []);
@@ -48,7 +53,7 @@ export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModal
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [], 'video/*': [] },
-    maxSize: 500 * 1024 * 1024, // 500 MB
+    maxSize: 500 * 1024 * 1024,
   });
 
   const remove = (i: number) => {
@@ -64,13 +69,65 @@ export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModal
     files.forEach(f => URL.revokeObjectURL(f.preview));
     setFiles([]);
     setUploaded(false);
+    setIsUploading(false);
     onClose();
   };
 
-  const handleUpload = () => {
-    onUpload?.(files);
-    setUploaded(true);
-    setTimeout(handleClose, 1200);
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+
+    try {
+      setIsUploading(true);
+
+      for (let i = 0; i < files.length; i++) {
+        const item = files[i];
+        const fileType = item.file.type.startsWith('video/') ? 'video' : 'image';
+
+        // Mark as uploading
+        setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'uploading' } : f));
+
+        try {
+          // 1. Get presigned URL + key from backend (library route for now — works for both)
+          const { uploadUrl, key } = await mediaService.requestUploadUrl(
+            item.file.name,
+            item.file.type,
+            item.file.size,
+            fileType
+          );
+
+          // 2. Upload file directly to R2
+          await mediaService.uploadToR2(uploadUrl, item.file);
+
+          // 3. Confirm upload (create MediaItem in DB) - uses confirm-upload route
+          const body: any = {
+            key,
+            filename: item.file.name,
+            contentType: item.file.type,
+            size: item.file.size,
+            type: fileType,
+          };
+          if (galleryId) body.galleryId = galleryId;
+          
+          // Confirm via the existing confirm-upload endpoint
+          const { default: axios } = await import('axios');
+          const token = localStorage.getItem('creator_token');
+          await axios.post('http://localhost:3001/api/creator/media/confirm', body, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'done' } : f));
+        } catch (err) {
+          console.error(`Upload failed for ${item.file.name}:`, err);
+          setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error' } : f));
+        }
+      }
+
+      setUploaded(true);
+      onUploaded?.();
+      setTimeout(handleClose, 1500);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -85,6 +142,12 @@ export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModal
         </div>
       ) : (
         <div className="space-y-5">
+          {galleryId && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-xl">
+              <span className="text-xs font-medium text-purple-700">📁 Upload vers la galerie sélectionnée</span>
+            </div>
+          )}
+
           {/* Drop zone */}
           <div
             {...getRootProps()}
@@ -116,8 +179,7 @@ export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModal
               {files.map((item, i) => {
                 const isVideo = item.file.type.startsWith('video/');
                 return (
-                  <div key={i} className="bg-gray-50 border border-gray-100 rounded-2xl p-3 space-y-3">
-                    {/* Row 1 : preview + nom + suppr */}
+                  <div key={i} className={`bg-gray-50 border rounded-2xl p-3 space-y-3 transition-colors ${item.status === 'done' ? 'border-emerald-200 bg-emerald-50' : item.status === 'error' ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-200 border border-gray-200">
                         {isVideo
@@ -129,53 +191,55 @@ export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModal
                         <p className="text-sm font-medium text-gray-900 truncate">{item.file.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{formatSize(item.file.size)} · {isVideo ? 'Vidéo' : 'Image'}</p>
                       </div>
-                      <button onClick={() => remove(i)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
-                        <X size={16} />
-                      </button>
-                    </div>
-
-                    {/* Row 2 : visibilité */}
-                    <div className="flex gap-2 flex-wrap">
-                      {VISIBILITY_OPTIONS.map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => update(i, 'visibility', opt.value)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                            item.visibility === opt.value
-                              ? opt.color
-                              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-                          }`}
-                        >
-                          {opt.label}
+                      {item.status === 'uploading' && <Loader2 size={18} className="text-purple-500 animate-spin shrink-0" />}
+                      {item.status === 'done' && <Check size={18} className="text-emerald-500 shrink-0" />}
+                      {item.status === 'idle' && (
+                        <button onClick={() => remove(i)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+                          <X size={16} />
                         </button>
-                      ))}
+                      )}
                     </div>
 
-                    {/* Row 3 : prix si payant */}
-                    {item.visibility === 'paid' && (
-                      <div className="flex items-center gap-3">
-                        <label className="text-xs font-medium text-gray-600 shrink-0">Prix :</label>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={10}
-                            value={item.price}
-                            onChange={e => update(i, 'price', Number(e.target.value))}
-                            className="w-24 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                          />
-                          <span className="text-sm">🪙</span>
+                    {item.status === 'idle' && (
+                      <>
+                        <div className="flex gap-2 flex-wrap">
+                          {VISIBILITY_OPTIONS.map(opt => (
+                            <button
+                              key={opt.value}
+                              onClick={() => update(i, 'visibility', opt.value)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                                item.visibility === opt.value ? opt.color : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
                         </div>
-                      </div>
-                    )}
 
-                    {/* Row 4 : description (hors galerie) */}
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={e => update(i, 'description', e.target.value)}
-                      placeholder="Description optionnelle..."
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                    />
+                        {item.visibility === 'paid' && (
+                          <div className="flex items-center gap-3">
+                            <label className="text-xs font-medium text-gray-600 shrink-0">Prix :</label>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number" min={10}
+                                value={item.price}
+                                onChange={e => update(i, 'price', Number(e.target.value))}
+                                className="w-24 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                              />
+                              <span className="text-sm">🪙</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={e => update(i, 'description', e.target.value)}
+                          placeholder="Description optionnelle..."
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                        />
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -184,16 +248,15 @@ export function UploadMediaModal({ isOpen, onClose, onUpload }: UploadMediaModal
 
           {/* Footer */}
           <div className="flex gap-3 pt-2">
-            <button onClick={handleClose} className="flex-1 py-3 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+            <button onClick={handleClose} disabled={isUploading} className="flex-1 py-3 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
               Annuler
             </button>
             <button
               onClick={handleUpload}
-              disabled={files.length === 0}
+              disabled={files.length === 0 || isUploading}
               className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg shadow-gray-900/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Upload size={18} />
-              Uploader {files.length > 0 ? `(${files.length})` : ''}
+              {isUploading ? <><Loader2 size={18} className="animate-spin" /> Envoi en cours...</> : <><Upload size={18} /> Uploader {files.length > 0 ? `(${files.length})` : ''}</>}
             </button>
           </div>
         </div>

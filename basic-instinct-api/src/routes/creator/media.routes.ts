@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { mediaController } from '../../controllers/creator/media.controller';
 import { validateBody } from '../../middleware/validate';
 import { uploadLimiter } from '../../middleware/rateLimiter';
-import { requestUploadUrlSchema, confirmUploadSchema, createGallerySchema } from '../../schemas/media.schemas';
+import { requestUploadUrlSchema, confirmUploadSchema, createGallerySchema, editGallerySchema } from '../../schemas/media.schemas';
 
 const router = Router();
 
@@ -13,7 +13,9 @@ router.post('/confirm', uploadLimiter, validateBody(confirmUploadSchema), mediaC
 // Access
 router.get('/', mediaController.getMediaItems);
 router.get('/galleries', mediaController.getGalleries);
+router.get('/galleries/:id', mediaController.getGalleryDetails);
 router.post('/galleries', validateBody(createGallerySchema), mediaController.createGallery);
+router.put('/galleries/:id', validateBody(editGallerySchema), mediaController.updateGallery);
 router.get('/:id/url', mediaController.getMediaUrl);
 
 // Delete
