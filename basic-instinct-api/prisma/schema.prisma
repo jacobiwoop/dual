@@ -26,6 +26,21 @@ model User {
   bio         String?
   bannerUrl   String?
 
+  // Profil créateur étendu
+  age                    Int?
+  country                String?
+  welcomeMessage         String?   // Message d'accueil public (max 300)
+  subscriberWelcomeMsg   String?   // Message de bienvenue abonnés (max 500)
+  categories             String?   // JSON array ex: ["Général","BDSM"]
+  tags                   String?   // JSON array ex: ["Brunette","France"]
+  profilePhotos          String?   // JSON array of URLs (max 4)
+  // Physique (optionnel)
+  height     String?
+  hairColor  String?
+  eyeColor   String?
+  bodyType   String?
+  tattoos    String?
+
   // Paramètres Créateur (si role = CREATOR)
   subscriptionPrice     Int @default(0) // Prix en pièces
   subscriptionPricePlus Int @default(0) // Abonnement premium (optionnel) en pièces
