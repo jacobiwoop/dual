@@ -32,3 +32,11 @@ export const createMediaFolderSchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
 });
+
+export const createGallerySchema = z.object({
+  title: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  priceCredits: z.number().min(0).default(0),
+  visibility: z.enum(['free', 'subscribers', 'paid']).default('free'),
+  coverKey: z.string().min(1).optional(), // R2 key return by presigned URL upload
+});

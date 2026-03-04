@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Upload, Film, Image as ImageIcon, FolderOpen, Plus, Trash2,
-  X, Check, Loader2, AlertCircle, MoreVertical, Pencil, FolderInput, ChevronRight
+  X, Check, Loader2, AlertCircle, MoreVertical, Pencil, FolderInput, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
@@ -110,7 +110,7 @@ function MoveModal({ item, folders, onClose, onMoved }: MoveModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-900">Déplacer vers...</h3>
@@ -150,6 +150,108 @@ function MoveModal({ item, folders, onClose, onMoved }: MoveModalProps) {
   );
 }
 
+// ─── Media Viewer Modal ───────────────────────────────────────────────────────
+
+interface MediaViewerModalProps {
+  items: LibraryItem[];
+  initialIndex: number;
+  onClose: () => void;
+  onMoveRequest: (item: LibraryItem) => void;
+  onDeleteRequest: (item: LibraryItem) => void;
+  onIndexChange: (index: number) => void;
+}
+
+function MediaViewerModal({ items, initialIndex, onClose, onMoveRequest, onDeleteRequest, onIndexChange }: MediaViewerModalProps) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const item = items[currentIndex];
+
+  useEffect(() => {
+    onIndexChange(currentIndex);
+  }, [currentIndex, onIndexChange]);
+
+  // Adjust current index if items array shrinks (e.g. after deletion)
+  useEffect(() => {
+    if (items.length === 0) {
+      onClose();
+    } else if (currentIndex >= items.length) {
+      setCurrentIndex(Math.max(0, items.length - 1));
+    }
+  }, [items.length, currentIndex, onClose]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+      } else if (e.key === 'ArrowRight') {
+        if (currentIndex < items.length - 1) setCurrentIndex(currentIndex + 1);
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, items.length, onClose]);
+
+  if (!item) return null;
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentIndex < items.length - 1) setCurrentIndex(currentIndex + 1);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col backdrop-blur-sm" onClick={onClose}>
+      {/* Header bars */}
+      <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent relative z-10" onClick={e => e.stopPropagation()}>
+        <div className="text-white">
+          <p className="font-semibold text-sm md:text-base">{item.filename || 'Fichier sans nom'}</p>
+          <p className="text-xs text-white/60 mt-0.5">{formatSize(item.sizeBytes)} • {currentIndex + 1} / {items.length}</p>
+        </div>
+        <div className="flex items-center gap-2 md:gap-3">
+          <button onClick={() => onMoveRequest(item)} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="Déplacer">
+            <FolderInput size={20} />
+          </button>
+          <button onClick={() => onDeleteRequest(item)} className="p-2 text-white/70 hover:text-red-400 hover:bg-white/10 rounded-full transition-colors" title="Supprimer">
+            <Trash2 size={20} />
+          </button>
+          <div className="w-px h-6 bg-white/20 mx-1"></div>
+          <button onClick={onClose} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="Fermer (Échap)">
+            <X size={24} />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 relative flex items-center justify-center min-h-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+        {currentIndex > 0 && (
+          <button onClick={handlePrev} className="absolute left-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-10 backdrop-blur-md">
+            <ChevronLeft size={28} />
+          </button>
+        )}
+        
+        <div className="max-w-full max-h-full p-4 flex items-center justify-center w-full h-full relative group">
+          {item.type === 'video' ? (
+            <video src={item.url} controls autoPlay className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" />
+          ) : (
+             <img src={item.url} alt={item.filename || ''} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" />
+          )}
+        </div>
+
+        {currentIndex < items.length - 1 && (
+          <button onClick={handleNext} className="absolute right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-10 backdrop-blur-md">
+            <ChevronRight size={28} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Library() {
@@ -163,6 +265,7 @@ export function Library() {
   const [moveTarget, setMoveTarget] = useState<LibraryItem | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
 
   const selectedFolder = folders.find(f => f.id === selectedFolderId) ?? null;
 
@@ -383,8 +486,12 @@ export function Library() {
       {/* ── Media Grid ── */}
       {(tab === 'all' || selectedFolder) && (
         loading ? (
-          <div className="flex items-center justify-center py-16 text-gray-400">
-            <Loader2 size={28} className="animate-spin" />
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="relative aspect-square rounded-xl bg-gray-200 animate-pulse overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-gray-200 via-gray-100 to-gray-200 opacity-50"></div>
+              </div>
+            ))}
           </div>
         ) : itemsToShow.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
@@ -393,13 +500,14 @@ export function Library() {
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-            {itemsToShow.map((item) => (
+            {itemsToShow.map((item, idx) => (
               <div
                 key={item.id}
-                className="relative aspect-square group"
+                className="relative aspect-square group cursor-pointer"
+                onClick={() => setViewingIndex(idx)}
               >
                 {/* Inner image container (overflow-hidden for rounded corners) */}
-                <div className="absolute inset-0 rounded-xl overflow-hidden border-2 border-gray-100 group-hover:border-gray-300 transition-all">
+                <div className="absolute inset-0 rounded-xl overflow-hidden border-2 border-gray-100 group-hover:border-purple-300 transition-all">
                   {/* Thumbnail */}
                   {item.thumbnailUrl ? (
                     <img src={item.thumbnailUrl} alt="" className="w-full h-full object-cover" />
@@ -413,6 +521,15 @@ export function Library() {
 
                   {/* Hover dark overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all" />
+
+                  {/* Center Video Icon for Videos with Thumbnails */}
+                  {item.type === 'video' && item.thumbnailUrl && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/30 rounded-full p-2.5 backdrop-blur-sm shadow-sm group-hover:bg-black/50 transition-colors">
+                        <Film size={20} className="text-white opacity-90" />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Filename on hover (top) */}
                   <p className="absolute top-1.5 left-1.5 right-1.5 text-white text-[9px] font-medium bg-black/40 rounded px-1 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-all">
@@ -463,8 +580,12 @@ export function Library() {
       {/* ── Folders Grid ── */}
       {tab === 'folders' && !selectedFolder && (
         loading ? (
-          <div className="flex items-center justify-center py-16 text-gray-400">
-            <Loader2 size={28} className="animate-spin" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="w-full relative rounded-2xl aspect-[4/3] bg-gray-200 animate-pulse overflow-hidden border border-gray-100">
+                <div className="absolute inset-0 bg-gradient-to-tr from-gray-200 via-gray-100 to-gray-200 opacity-50"></div>
+              </div>
+            ))}
           </div>
         ) : (
           <>
@@ -532,6 +653,21 @@ export function Library() {
       {/* Close menu on outside click */}
       {openMenuId && (
         <div className="fixed inset-0 z-[5]" onClick={() => setOpenMenuId(null)} />
+      )}
+
+      {viewingIndex !== null && (
+        <MediaViewerModal
+          items={itemsToShow}
+          initialIndex={viewingIndex}
+          onClose={() => setViewingIndex(null)}
+          onMoveRequest={(item) => setMoveTarget(item)}
+          onDeleteRequest={(item) => {
+             if (window.confirm('Voulez-vous vraiment supprimer ce média ?')) {
+               handleDelete(item);
+             }
+          }}
+          onIndexChange={(index) => setViewingIndex(index)}
+        />
       )}
     </div>
   );

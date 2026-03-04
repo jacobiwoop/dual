@@ -6,6 +6,7 @@ import { r2Client, R2_BUCKET_NAME } from './r2';
 import { prisma } from './prisma';
 import logger from './logger';
 import { Readable } from 'stream';
+import fs from 'fs';
 import { downloadVideoToLocal, extractVideoThumbnail, cleanupLocalFiles, compressVideo } from './video';
 
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
@@ -180,7 +181,7 @@ async function generateThumbnail(itemId: string, key: string, type: string) {
         thumbLocalPath = await extractVideoThumbnail(localVideoPath, itemId);
         
         // 3. Lire le fichier généré
-        const thumbBuffer = require('fs').readFileSync(thumbLocalPath);
+        const thumbBuffer = fs.readFileSync(thumbLocalPath);
         
         // 4. Upload sur R2
         const thumbnailKey = key.replace(/\.[^.]+$/, '_thumb.jpg');
@@ -227,7 +228,7 @@ async function processVideo(itemId: string, key: string) {
       const compPath = await compressVideo(localVideoPath, res, itemId);
       convertedPaths.push(compPath);
       
-      const compBuffer = require('fs').readFileSync(compPath);
+      const compBuffer = fs.readFileSync(compPath);
       const resName = res.replace('x?', 'p'); // 720x? -> 720p
       const outKey = key.replace(/\.[^.]+$/, `_${resName}.mp4`);
       

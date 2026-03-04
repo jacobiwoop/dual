@@ -4,6 +4,13 @@ import { z, ZodSchema } from 'zod';
 export const validate = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Temporary logging
+      console.log('🔍 VALIDATION DEBUG:', {
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      });
+      
       schema.parse({
         body: req.body,
         query: req.query,
@@ -12,6 +19,9 @@ export const validate = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
+        // Log validation errors
+        console.log('❌ VALIDATION ERROR:', JSON.stringify(error.issues, null, 2));
+        
         return res.status(400).json({
           error: 'Validation failed',
           details: error.issues?.map((err: any) => ({

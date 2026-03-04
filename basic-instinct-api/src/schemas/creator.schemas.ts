@@ -27,7 +27,7 @@ export const createFolderSchema = z.object({
   body: z.object({
     title: z.string().min(1).max(100),
     description: z.string().max(500).optional(),
-    coverUrl: z.string().url().optional(),
+    coverUrl: z.string().url().nullish(),
   }),
 });
 

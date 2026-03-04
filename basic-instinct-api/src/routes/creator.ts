@@ -37,14 +37,14 @@ router.post('/notes/:clientId', messagesController.saveNote);
 // LIBRARY (Bibliothèque privée)
 // ====================================
 router.get('/library', libraryController.getLibraryItems);
-router.post('/library', uploadLimiter, validateBody(createLibraryItemSchema), libraryController.createLibraryItem);
+router.post('/library', uploadLimiter, validate(createLibraryItemSchema), libraryController.createLibraryItem);
 router.delete('/library/:id', libraryController.deleteLibraryItem);
 router.put('/library/:id/move', libraryController.moveLibraryItem);
 router.get('/library/stats', libraryController.getStats);
 
 // Folders
 router.get('/library/folders', libraryController.getFolders);
-router.post('/library/folders', validateBody(createFolderSchema), libraryController.createFolder);
+router.post('/library/folders', validate(createFolderSchema), libraryController.createFolder);
 router.put('/library/folders/:id', libraryController.updateFolder);
 router.delete('/library/folders/:id', libraryController.deleteFolder);
 
@@ -52,7 +52,7 @@ router.delete('/library/folders/:id', libraryController.deleteFolder);
 // PROFILE
 // ====================================
 router.get('/profile', profileController.getProfile);
-router.put('/profile', validateBody(updateProfileSchema), profileController.updateProfile);
+router.put('/profile', validate(updateProfileSchema), profileController.updateProfile);
 router.post('/profile/avatar', uploadLimiter, profileController.updateAvatar);
 router.post('/profile/banner', uploadLimiter, profileController.updateBanner);
 router.put('/profile/payout-settings', creatorPayoutsController.updatePayoutSettings);

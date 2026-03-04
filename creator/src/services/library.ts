@@ -63,7 +63,11 @@ export const libraryService = {
   },
 
   async createFolder(title: string, description?: string) {
-    const { data } = await api.post('/api/creator/library/folders', { title, description });
+    const body: any = { title };
+    if (description) {
+      body.description = description;
+    }
+    const { data } = await api.post('/api/creator/library/folders', body);
     return data.folder as LibraryFolder;
   },
 
