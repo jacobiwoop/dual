@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Image as ImageIcon, Video, Lock, Trash2, Edit2, Upload, GripVertical, X } from 'lucide-react';
+import { Plus, Image as ImageIcon, Video, Lock, Trash2, Edit2, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { mediaService, MediaItem, Gallery } from '@/services/media';
 import { Modal } from '@/components/ui/Modal';
 import { useDropzone } from 'react-dropzone';
@@ -13,6 +13,7 @@ export function Media() {
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
   const [openGallery, setOpenGallery] = useState<(Gallery & { items: MediaItem[] }) | null>(null);
   const [loadingGallery, setLoadingGallery] = useState(false);
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
 
   const [items, setItems] = useState<MediaItem[]>([]);
   const [galleries, setGalleries] = useState<Gallery[]>([]);
@@ -151,14 +152,44 @@ export function Media() {
                 <p className="text-lg font-medium mb-2">Aucun média dans cette galerie</p>
                 <p className="text-sm">Cliquez sur "Ajouter des médias" pour commencer</p>
               </div>
-            ) : openGallery.items?.map((item) => (
-              <div key={item.id} className="aspect-square rounded-2xl overflow-hidden relative group bg-gray-100 border border-gray-100 shadow-sm">
-                <img src={item.thumbnailUrl || item.url} alt="Media" className="w-full h-full object-cover" />
+            ) : openGallery.items?.map((item, index) => (
+              <div 
+                key={item.id} 
+                className="aspect-square rounded-2xl overflow-hidden relative group bg-gray-100 border border-gray-100 shadow-sm cursor-pointer"
+                onClick={() => setViewingIndex(index)}
+              >
+                {item.thumbnailUrl ? (
+                  <img src={item.thumbnailUrl} alt="Media" className="w-full h-full object-cover" />
+                ) : item.type === 'video' ? (
+                  <video
+                    src={item.url}
+                    preload="metadata"
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                    onLoadedMetadata={(e) => {
+                      // Seek to 1s to get a better thumbnail frame
+                      const v = e.currentTarget;
+                      v.currentTime = 1;
+                    }}
+                  />
+                ) : (
+                  <img src={item.url} alt="Media" className="w-full h-full object-cover" />
+                )}
                 <div className="absolute top-2 left-2 bg-black/40 backdrop-blur-sm p-1.5 rounded-lg text-white">
                   {item.type === 'video' ? <Video size={12} /> : <ImageIcon size={12} />}
                 </div>
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button className="p-2 bg-white rounded-xl text-red-500 hover:bg-red-50 transition-colors shadow-lg"><Trash2 size={16} /></button>
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-2">
+                  <span className="text-white text-[10px] font-medium">
+                    {item.fileSizeBytes ? `${(Number(item.fileSizeBytes) / (1024 * 1024)).toFixed(1)} Mo` : ''}
+                  </span>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); /* delete handled in viewer */ }}
+                    className="p-1.5 bg-white/90 rounded-lg text-red-500 hover:bg-red-50 transition-colors shadow"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -321,6 +352,23 @@ export function Media() {
           fetchData();
         }}
       />
+      {/* Gallery Media Viewer */}
+      {viewingIndex !== null && openGallery && (
+        <GalleryMediaViewerModal
+          items={openGallery.items}
+          initialIndex={viewingIndex}
+          onClose={() => setViewingIndex(null)}
+          onDelete={async (item) => {
+            try {
+              await mediaService.deleteMedia(item.id);
+              const details = await mediaService.getGalleryDetails(openGallery.id);
+              setOpenGallery(details);
+              if (details.items.length === 0) setViewingIndex(null);
+              else setViewingIndex(prev => Math.min(prev ?? 0, details.items.length - 1));
+            } catch { alert('Erreur lors de la suppression'); }
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -681,3 +729,90 @@ function EditGalleryModal({ gallery, isOpen, onClose, onSaved }: { gallery: Gall
   );
 }
 
+
+function GalleryMediaViewerModal({
+  items,
+  initialIndex,
+  onClose,
+  onDelete,
+}: {
+  items: MediaItem[];
+  initialIndex: number;
+  onClose: () => void;
+  onDelete: (item: MediaItem) => Promise<void>;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const item = items[currentIndex];
+
+  useEffect(() => {
+    if (items.length === 0) onClose();
+    else if (currentIndex >= items.length) setCurrentIndex(Math.max(0, items.length - 1));
+  }, [items.length, currentIndex, onClose]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && currentIndex > 0) setCurrentIndex(i => i - 1);
+      else if (e.key === 'ArrowRight' && currentIndex < items.length - 1) setCurrentIndex(i => i + 1);
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [currentIndex, items.length, onClose]);
+
+  if (!item) return null;
+
+  const handleDeleteItem = async () => {
+    if (!confirm('Supprimer ce média de la galerie ?')) return;
+    setIsDeleting(true);
+    try { await onDelete(item); } finally { setIsDeleting(false); }
+  };
+
+  const formatBytes = (bytes: number | null) => {
+    if (!bytes) return '';
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col backdrop-blur-sm" onClick={onClose}>
+      <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent relative z-10" onClick={e => e.stopPropagation()}>
+        <div className="text-white">
+          <p className="font-semibold text-sm">{item.type === 'video' ? '🎬 Vidéo' : '🖼️ Image'}</p>
+          <p className="text-xs text-white/60 mt-0.5">
+            {formatBytes(item.fileSizeBytes)} · {currentIndex + 1} / {items.length}
+            {item.visibility ? ` · ${item.visibility === 'free' ? 'Gratuit' : item.visibility === 'subscribers' ? 'Abonnés' : `${item.priceCredits}🪙`}` : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={handleDeleteItem} disabled={isDeleting} className="p-2 text-white/70 hover:text-red-400 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50" title="Supprimer">
+            <Trash2 size={20} />
+          </button>
+          <div className="w-px h-6 bg-white/20 mx-1" />
+          <button onClick={onClose} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="Fermer (Échap)">
+            <X size={24} />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 relative flex items-center justify-center min-h-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+        {currentIndex > 0 && (
+          <button onClick={() => setCurrentIndex(i => i - 1)} className="absolute left-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-10 backdrop-blur-md">
+            <ChevronLeft size={28} />
+          </button>
+        )}
+        <div className="max-w-full max-h-full p-4 flex items-center justify-center w-full h-full">
+          {item.type === 'video' ? (
+            <video src={item.url} controls autoPlay className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" />
+          ) : (
+            <img src={item.url} alt="Média" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" />
+          )}
+        </div>
+        {currentIndex < items.length - 1 && (
+          <button onClick={() => setCurrentIndex(i => i + 1)} className="absolute right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-10 backdrop-blur-md">
+            <ChevronRight size={28} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

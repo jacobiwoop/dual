@@ -4240,3 +4240,1576 @@ prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `ma
       }
     }
     [35mresponseTime[39m: 50
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`title` FROM `main`.`Gallery` WHERE `main`.`Gallery`.`id` IN (?) LIMIT ? OFFSET ?
+prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MediaItem`.`id` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? LIMIT ? OFFSET ?) AS `sub`
+[18:58:33] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 47,
+      "method": "GET",
+      "url": "/api/creator/media?limit=100",
+      "query": {
+        "limit": "100"
+      },
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"42f-IYvm1fihW4vhCpNOsHlNSBg/opw\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 52668
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "99",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "1071",
+        "etag": "W/\"42f-ROzM4YhM1oBcJXK0N3OMZMbQzGE\""
+      }
+    }
+    [35mresponseTime[39m: 7
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt`, COALESCE(`aggr_selection_0_MediaItem`.`_aggr_count_items`, 0) AS `_aggr_count_items` FROM `main`.`Gallery` LEFT JOIN (SELECT `main`.`MediaItem`.`galleryId`, COUNT(*) AS `_aggr_count_items` FROM `main`.`MediaItem` WHERE 1=1 GROUP BY `main`.`MediaItem`.`galleryId`) AS `aggr_selection_0_MediaItem` ON (`main`.`Gallery`.`id` = `aggr_selection_0_MediaItem`.`galleryId`) WHERE `main`.`Gallery`.`creatorId` = ? ORDER BY `main`.`Gallery`.`createdAt` DESC LIMIT ? OFFSET ?
+[18:58:33] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 48,
+      "method": "GET",
+      "url": "/api/creator/media/galleries",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"393-LoJIkieFGFkhizAFwCfS7Ysj9vU\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 52652
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "98",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "915",
+        "etag": "W/\"393-fGou1xNbZh1Pipg6dcB2ceYpH+Y\""
+      }
+    }
+    [35mresponseTime[39m: 5
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`title` FROM `main`.`Gallery` WHERE `main`.`Gallery`.`id` IN (NULL) LIMIT ? OFFSET ?
+prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MediaItem`.`id` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? LIMIT ? OFFSET ?) AS `sub`
+[18:58:33] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 49,
+      "method": "GET",
+      "url": "/api/creator/media?limit=100",
+      "query": {
+        "limit": "100"
+      },
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkZTFhYTIwYS1jZWMzLTRhNDgtOTA0NS02ZDQxMjM4OTViMjkiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoidGVzdDJAdGVzdDIuY29tIiwiaWF0IjoxNzcyNjUwMDczLCJleHAiOjE3NzI2NTA5NzN9.WM6gbzXibcG2hj84ncNTKXlRmPyIoP9cB092xn27kIA",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "accept-language": "en-US,en;q=0.9",
+        "if-none-match": "W/\"26-qBaQM3ONoncBX2IrW6b9hUHA3Js\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 52650
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "97",
+        "ratelimit-reset": "60",
+        "etag": "W/\"26-qBaQM3ONoncBX2IrW6b9hUHA3Js\""
+      }
+    }
+    [35mresponseTime[39m: 3
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt`, COALESCE(`aggr_selection_0_MediaItem`.`_aggr_count_items`, 0) AS `_aggr_count_items` FROM `main`.`Gallery` LEFT JOIN (SELECT `main`.`MediaItem`.`galleryId`, COUNT(*) AS `_aggr_count_items` FROM `main`.`MediaItem` WHERE 1=1 GROUP BY `main`.`MediaItem`.`galleryId`) AS `aggr_selection_0_MediaItem` ON (`main`.`Gallery`.`id` = `aggr_selection_0_MediaItem`.`galleryId`) WHERE `main`.`Gallery`.`creatorId` = ? ORDER BY `main`.`Gallery`.`createdAt` DESC LIMIT ? OFFSET ?
+[18:58:34] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 50,
+      "method": "GET",
+      "url": "/api/creator/media/galleries",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkZTFhYTIwYS1jZWMzLTRhNDgtOTA0NS02ZDQxMjM4OTViMjkiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoidGVzdDJAdGVzdDIuY29tIiwiaWF0IjoxNzcyNjUwMDczLCJleHAiOjE3NzI2NTA5NzN9.WM6gbzXibcG2hj84ncNTKXlRmPyIoP9cB092xn27kIA",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "accept-language": "en-US,en;q=0.9",
+        "if-none-match": "W/\"182-BpqrSisXqoMAgm3rWTXAbExrWx4\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 52650
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "96",
+        "ratelimit-reset": "59",
+        "etag": "W/\"182-BpqrSisXqoMAgm3rWTXAbExrWx4\""
+      }
+    }
+    [35mresponseTime[39m: 6
+[19:01:13] [32mINFO[39m: [36mSocket.io: Client disconnected[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35msocketId[39m: "KurpW3J2DAZppr3gAAAB"
+    [35mreason[39m: "transport close"
+[19:01:13] [32mINFO[39m: [36mSocket.io: User is offline[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`role`, `main`.`User`.`avatarUrl`, `main`.`User`.`bio`, `main`.`User`.`bannerUrl`, `main`.`User`.`coinBalance`, `main`.`User`.`subscriptionPrice`, `main`.`User`.`subscriptionPricePlus`, `main`.`User`.`isVerified`, `main`.`User`.`createdAt` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 51,
+      "method": "GET",
+      "url": "/api/auth/me",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55558
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "99",
+        "ratelimit-reset": "60",
+        "etag": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      }
+    }
+    [35mresponseTime[39m: 26
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`role`, `main`.`User`.`avatarUrl`, `main`.`User`.`bio`, `main`.`User`.`bannerUrl`, `main`.`User`.`coinBalance`, `main`.`User`.`subscriptionPrice`, `main`.`User`.`subscriptionPricePlus`, `main`.`User`.`isVerified`, `main`.`User`.`createdAt` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 52,
+      "method": "GET",
+      "url": "/api/auth/me",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55558
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "98",
+        "ratelimit-reset": "60",
+        "etag": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      }
+    }
+    [35mresponseTime[39m: 3
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`title` FROM `main`.`Gallery` WHERE `main`.`Gallery`.`id` IN (?) LIMIT ? OFFSET ?
+prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MediaItem`.`id` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? LIMIT ? OFFSET ?) AS `sub`
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 53,
+      "method": "GET",
+      "url": "/api/creator/media?limit=100",
+      "query": {
+        "limit": "100"
+      },
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"42f-ROzM4YhM1oBcJXK0N3OMZMbQzGE\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55558
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "97",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "1071",
+        "etag": "W/\"42f-7UDYZOkfZoPR2AHcVLVkLg8bvzk\""
+      }
+    }
+    [35mresponseTime[39m: 21
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`role`, `main`.`User`.`email`, `main`.`User`.`isSuspended` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+[19:01:17] [32mINFO[39m: [36mSocket.io: User authenticated[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35msocketId[39m: "cuqp5vixSciW8YsiAAAD"
+[19:01:17] [32mINFO[39m: [36mSocket.io: Client connected[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35msocketId[39m: "cuqp5vixSciW8YsiAAAD"
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`title` FROM `main`.`Gallery` WHERE `main`.`Gallery`.`id` IN (?) LIMIT ? OFFSET ?
+prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MediaItem`.`id` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? LIMIT ? OFFSET ?) AS `sub`
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 54,
+      "method": "GET",
+      "url": "/api/creator/media?limit=100",
+      "query": {
+        "limit": "100"
+      },
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"42f-7UDYZOkfZoPR2AHcVLVkLg8bvzk\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55570
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "96",
+        "ratelimit-reset": "60",
+        "etag": "W/\"42f-7UDYZOkfZoPR2AHcVLVkLg8bvzk\""
+      }
+    }
+    [35mresponseTime[39m: 13
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt`, COALESCE(`aggr_selection_0_MediaItem`.`_aggr_count_items`, 0) AS `_aggr_count_items` FROM `main`.`Gallery` LEFT JOIN (SELECT `main`.`MediaItem`.`galleryId`, COUNT(*) AS `_aggr_count_items` FROM `main`.`MediaItem` WHERE 1=1 GROUP BY `main`.`MediaItem`.`galleryId`) AS `aggr_selection_0_MediaItem` ON (`main`.`Gallery`.`id` = `aggr_selection_0_MediaItem`.`galleryId`) WHERE `main`.`Gallery`.`creatorId` = ? ORDER BY `main`.`Gallery`.`createdAt` DESC LIMIT ? OFFSET ?
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 55,
+      "method": "GET",
+      "url": "/api/creator/media/galleries",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"393-fGou1xNbZh1Pipg6dcB2ceYpH+Y\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55596
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "95",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "915",
+        "etag": "W/\"393-xdIkZ8dbh7pa/XcQN+hX2bodxrk\""
+      }
+    }
+    [35mresponseTime[39m: 4
+[19:01:17] [32mINFO[39m: [36mSocket.io: User is online[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE `main`.`Conversation`.`creatorId` = ? ORDER BY `main`.`Conversation`.`updatedAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`ConversationParticipant`.`id`, `main`.`ConversationParticipant`.`conversationId`, `main`.`ConversationParticipant`.`userId`, `main`.`ConversationParticipant`.`joinedAt`, `main`.`ConversationParticipant`.`lastReadAt` FROM `main`.`ConversationParticipant` WHERE `main`.`ConversationParticipant`.`conversationId` IN (?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`content`, `main`.`Message`.`createdAt`, `main`.`Message`.`isRead`, `main`.`Message`.`senderId`, `main`.`Message`.`conversationId` FROM `main`.`Message` WHERE `main`.`Message`.`conversationId` IN (?) ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl`, `main`.`User`.`role` FROM `main`.`User` WHERE `main`.`User`.`id` IN (?,?) LIMIT ? OFFSET ?
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 56,
+      "method": "GET",
+      "url": "/api/creator/conversations",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"1fe-yqNKntAoeN7CKKLoBjtTAlX47Q4\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55558
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "94",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "502",
+        "etag": "W/\"1f6-eIE0qsgDE/qTn67e/Ni98T+ype0\""
+      }
+    }
+    [35mresponseTime[39m: 13
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt`, COALESCE(`aggr_selection_0_MediaItem`.`_aggr_count_items`, 0) AS `_aggr_count_items` FROM `main`.`Gallery` LEFT JOIN (SELECT `main`.`MediaItem`.`galleryId`, COUNT(*) AS `_aggr_count_items` FROM `main`.`MediaItem` WHERE 1=1 GROUP BY `main`.`MediaItem`.`galleryId`) AS `aggr_selection_0_MediaItem` ON (`main`.`Gallery`.`id` = `aggr_selection_0_MediaItem`.`galleryId`) WHERE `main`.`Gallery`.`creatorId` = ? ORDER BY `main`.`Gallery`.`createdAt` DESC LIMIT ? OFFSET ?
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 57,
+      "method": "GET",
+      "url": "/api/creator/media/galleries",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"393-xdIkZ8dbh7pa/XcQN+hX2bodxrk\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55596
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "93",
+        "ratelimit-reset": "60",
+        "etag": "W/\"393-xdIkZ8dbh7pa/XcQN+hX2bodxrk\""
+      }
+    }
+    [35mresponseTime[39m: 5
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE `main`.`Conversation`.`creatorId` = ? ORDER BY `main`.`Conversation`.`updatedAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`ConversationParticipant`.`id`, `main`.`ConversationParticipant`.`conversationId`, `main`.`ConversationParticipant`.`userId`, `main`.`ConversationParticipant`.`joinedAt`, `main`.`ConversationParticipant`.`lastReadAt` FROM `main`.`ConversationParticipant` WHERE `main`.`ConversationParticipant`.`conversationId` IN (?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`content`, `main`.`Message`.`createdAt`, `main`.`Message`.`isRead`, `main`.`Message`.`senderId`, `main`.`Message`.`conversationId` FROM `main`.`Message` WHERE `main`.`Message`.`conversationId` IN (?) ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl`, `main`.`User`.`role` FROM `main`.`User` WHERE `main`.`User`.`id` IN (?,?) LIMIT ? OFFSET ?
+[19:01:17] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 58,
+      "method": "GET",
+      "url": "/api/creator/conversations",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"1f6-eIE0qsgDE/qTn67e/Ni98T+ype0\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55558
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "92",
+        "ratelimit-reset": "60",
+        "etag": "W/\"1f6-eIE0qsgDE/qTn67e/Ni98T+ype0\""
+      }
+    }
+    [35mresponseTime[39m: 6
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt` FROM `main`.`Gallery` WHERE (`main`.`Gallery`.`id` = ? AND `main`.`Gallery`.`creatorId` = ?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`galleryId` IN (?) ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+[19:01:19] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 59,
+      "method": "GET",
+      "url": "/api/creator/media/galleries/a4ad9c79-96f7-410d-bed6-98dae8126285",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"742-cJYeKDy86kzhOyypnITpzFmzphM\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 55558
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "91",
+        "ratelimit-reset": "58",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "1858",
+        "etag": "W/\"742-lElm+T+7uzWoIDbBfNgBGWhTQ+c\""
+      }
+    }
+    [35mresponseTime[39m: 11
+[19:03:53] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 60,
+      "method": "POST",
+      "url": "/api/creator/media/upload-url",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "content-length": "115",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUwMTIwLCJleHAiOjE3NzI2NTEwMjB9.uCTrGd4jdWNLmr-Z3JSlIdPQWHfTRJK81gxN9_wDvLw",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "content-type": "application/json",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd"
+      },
+      "remoteAddress": "::1",
+      "remotePort": 37290
+    }
+    [35mres[39m: {
+      "statusCode": 401,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "99",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "37",
+        "etag": "W/\"25-07QyyydXmZBeGiQoq3BiQMOPbjc\""
+      }
+    }
+    [35mresponseTime[39m: 1
+🔍 VALIDATION DEBUG: {
+  body: {
+    refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJpYXQiOjE3NzI2NTAxMjAsImV4cCI6MTc3NTI0MjEyMH0.yfLK189MXkCq2MWwDbCNo77FHxnWp9ceex00cOyGSFs'
+  },
+  query: {},
+  params: {}
+}
+prisma:query SELECT `main`.`RefreshToken`.`id`, `main`.`RefreshToken`.`userId`, `main`.`RefreshToken`.`token`, `main`.`RefreshToken`.`expiresAt`, `main`.`RefreshToken`.`createdAt` FROM `main`.`RefreshToken` WHERE (`main`.`RefreshToken`.`token` = ? AND 1=1) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`passwordHash`, `main`.`User`.`role`, `main`.`User`.`displayName`, `main`.`User`.`username`, `main`.`User`.`avatarUrl`, `main`.`User`.`bio`, `main`.`User`.`bannerUrl`, `main`.`User`.`subscriptionPrice`, `main`.`User`.`subscriptionPricePlus`, `main`.`User`.`coinBalance`, `main`.`User`.`totalEarned`, `main`.`User`.`totalSpent`, `main`.`User`.`preferredPayoutMethod`, `main`.`User`.`cryptoAddress`, `main`.`User`.`cryptoNetwork`, `main`.`User`.`paxfulUsername`, `main`.`User`.`isVerified`, `main`.`User`.`kycStatus`, `main`.`User`.`iban`, `main`.`User`.`ibanVerified`, `main`.`User`.`isActive`, `main`.`User`.`isSuspended`, `main`.`User`.`suspendedReason`, `main`.`User`.`suspendedAt`, `main`.`User`.`createdAt`, `main`.`User`.`updatedAt`, `main`.`User`.`lastLoginAt` FROM `main`.`User` WHERE `main`.`User`.`id` = ? LIMIT ? OFFSET ?
+[19:03:53] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 61,
+      "method": "POST",
+      "url": "/api/auth/refresh",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "content-length": "211",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "content-type": "application/json",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd"
+      },
+      "remoteAddress": "::1",
+      "remotePort": 37290
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "98",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "377",
+        "etag": "W/\"179-8pylRaC0mx7g6Tq2BEZMt1t4D+8\""
+      }
+    }
+    [35mresponseTime[39m: 6
+[19:03:53] [32mINFO[39m: [36mGenerated presigned URL for video: uploads/493394a3-9dbe-4198-9a71-d445a1fcffc2/1772651033272-39jy1abvcxl-20260111_0044_01ken4g1rpe71vhs6ejywkwkt3.mp4[39m
+[19:03:53] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 62,
+      "method": "POST",
+      "url": "/api/creator/media/upload-url",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "content-length": "115",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "content-type": "application/json",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd"
+      },
+      "remoteAddress": "::1",
+      "remotePort": 37290
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "10;w=60",
+        "ratelimit-limit": "10",
+        "ratelimit-remaining": "9",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "948",
+        "etag": "W/\"3b4-PH6QMNple7BVvIc22wrzte6XVXc\""
+      }
+    }
+    [35mresponseTime[39m: 8
+prisma:query INSERT INTO `main`.`MediaItem` (`id`, `creatorId`, `type`, `url`, `visibility`, `priceCredits`, `galleryId`, `sortOrder`, `fileSizeBytes`, `isFlagged`, `isVisible`, `salesCount`, `revenueCredits`, `uploadDate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `creatorId` AS `creatorId`, `type` AS `type`, `url` AS `url`, `thumbnailUrl` AS `thumbnailUrl`, `visibility` AS `visibility`, `priceCredits` AS `priceCredits`, `description` AS `description`, `galleryId` AS `galleryId`, `sortOrder` AS `sortOrder`, `fileSizeBytes` AS `fileSizeBytes`, `durationSec` AS `durationSec`, `isFlagged` AS `isFlagged`, `isVisible` AS `isVisible`, `salesCount` AS `salesCount`, `revenueCredits` AS `revenueCredits`, `uploadDate` AS `uploadDate`
+[19:04:07] [32mINFO[39m: [36mMediaItem created for gallery a4ad9c79-96f7-410d-bed6-98dae8126285: fef406d6-9148-4698-8804-c22194e6a4e6[39m
+[19:04:07] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 63,
+      "method": "POST",
+      "url": "/api/creator/media/confirm",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "content-length": "290",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "content-type": "application/json",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd"
+      },
+      "remoteAddress": "::1",
+      "remotePort": 46218
+    }
+    [35mres[39m: {
+      "statusCode": 201,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "10;w=60",
+        "ratelimit-limit": "10",
+        "ratelimit-remaining": "8",
+        "ratelimit-reset": "46",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "592",
+        "etag": "W/\"250-yRIEYpJQf+addXlOMIKhOR+DRZg\""
+      }
+    }
+    [35mresponseTime[39m: 140
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt` FROM `main`.`Gallery` WHERE (`main`.`Gallery`.`id` = ? AND `main`.`Gallery`.`creatorId` = ?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`galleryId` IN (?) ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+[19:04:07] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 64,
+      "method": "GET",
+      "url": "/api/creator/media/galleries/a4ad9c79-96f7-410d-bed6-98dae8126285",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"742-lElm+T+7uzWoIDbBfNgBGWhTQ+c\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 46218
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "95",
+        "ratelimit-reset": "46",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "2834",
+        "etag": "W/\"b12-aNK4EqwS6Vid4hCOtEnJcTsTV4Q\""
+      }
+    }
+    [35mresponseTime[39m: 18
+[19:06:22] [32mINFO[39m: [36mSocket.io: Client disconnected[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35msocketId[39m: "cuqp5vixSciW8YsiAAAD"
+    [35mreason[39m: "transport close"
+[19:06:22] [32mINFO[39m: [36mSocket.io: User is offline[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`role`, `main`.`User`.`avatarUrl`, `main`.`User`.`bio`, `main`.`User`.`bannerUrl`, `main`.`User`.`coinBalance`, `main`.`User`.`subscriptionPrice`, `main`.`User`.`subscriptionPricePlus`, `main`.`User`.`isVerified`, `main`.`User`.`createdAt` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`role`, `main`.`User`.`avatarUrl`, `main`.`User`.`bio`, `main`.`User`.`bannerUrl`, `main`.`User`.`coinBalance`, `main`.`User`.`subscriptionPrice`, `main`.`User`.`subscriptionPricePlus`, `main`.`User`.`isVerified`, `main`.`User`.`createdAt` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 65,
+      "method": "GET",
+      "url": "/api/auth/me",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39342
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "99",
+        "ratelimit-reset": "60",
+        "etag": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      }
+    }
+    [35mresponseTime[39m: 4
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 66,
+      "method": "GET",
+      "url": "/api/auth/me",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39342
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "98",
+        "ratelimit-reset": "60",
+        "etag": "W/\"137-DqiwU7ywuopm1bnC37A7MEJgtuA\""
+      }
+    }
+    [35mresponseTime[39m: 4
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`title` FROM `main`.`Gallery` WHERE `main`.`Gallery`.`id` IN (?,?) LIMIT ? OFFSET ?
+prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MediaItem`.`id` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? LIMIT ? OFFSET ?) AS `sub`
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 67,
+      "method": "GET",
+      "url": "/api/creator/media?limit=100",
+      "query": {
+        "limit": "100"
+      },
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"42f-7UDYZOkfZoPR2AHcVLVkLg8bvzk\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39356
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "97",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "2123",
+        "etag": "W/\"84b-L30PIFC+OBZR7cN0jLI9oOXZkws\""
+      }
+    }
+    [35mresponseTime[39m: 11
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt`, COALESCE(`aggr_selection_0_MediaItem`.`_aggr_count_items`, 0) AS `_aggr_count_items` FROM `main`.`Gallery` LEFT JOIN (SELECT `main`.`MediaItem`.`galleryId`, COUNT(*) AS `_aggr_count_items` FROM `main`.`MediaItem` WHERE 1=1 GROUP BY `main`.`MediaItem`.`galleryId`) AS `aggr_selection_0_MediaItem` ON (`main`.`Gallery`.`id` = `aggr_selection_0_MediaItem`.`galleryId`) WHERE `main`.`Gallery`.`creatorId` = ? ORDER BY `main`.`Gallery`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE `main`.`Conversation`.`creatorId` = ? ORDER BY `main`.`Conversation`.`updatedAt` DESC LIMIT ? OFFSET ?
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 68,
+      "method": "GET",
+      "url": "/api/creator/media/galleries",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"393-xdIkZ8dbh7pa/XcQN+hX2bodxrk\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39350
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "96",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "915",
+        "etag": "W/\"393-2QyKA/EpoPxl23imWV06EdkoHfw\""
+      }
+    }
+    [35mresponseTime[39m: 9
+prisma:query SELECT `main`.`ConversationParticipant`.`id`, `main`.`ConversationParticipant`.`conversationId`, `main`.`ConversationParticipant`.`userId`, `main`.`ConversationParticipant`.`joinedAt`, `main`.`ConversationParticipant`.`lastReadAt` FROM `main`.`ConversationParticipant` WHERE `main`.`ConversationParticipant`.`conversationId` IN (?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`content`, `main`.`Message`.`createdAt`, `main`.`Message`.`isRead`, `main`.`Message`.`senderId`, `main`.`Message`.`conversationId` FROM `main`.`Message` WHERE `main`.`Message`.`conversationId` IN (?) ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl`, `main`.`User`.`role` FROM `main`.`User` WHERE `main`.`User`.`id` IN (?,?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`title` FROM `main`.`Gallery` WHERE `main`.`Gallery`.`id` IN (?,?) LIMIT ? OFFSET ?
+prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`MediaItem`.`id` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`creatorId` = ? LIMIT ? OFFSET ?) AS `sub`
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 70,
+      "method": "GET",
+      "url": "/api/creator/media?limit=100",
+      "query": {
+        "limit": "100"
+      },
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"84b-L30PIFC+OBZR7cN0jLI9oOXZkws\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39356
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "94",
+        "ratelimit-reset": "60",
+        "etag": "W/\"84b-L30PIFC+OBZR7cN0jLI9oOXZkws\""
+      }
+    }
+    [35mresponseTime[39m: 16
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt`, COALESCE(`aggr_selection_0_MediaItem`.`_aggr_count_items`, 0) AS `_aggr_count_items` FROM `main`.`Gallery` LEFT JOIN (SELECT `main`.`MediaItem`.`galleryId`, COUNT(*) AS `_aggr_count_items` FROM `main`.`MediaItem` WHERE 1=1 GROUP BY `main`.`MediaItem`.`galleryId`) AS `aggr_selection_0_MediaItem` ON (`main`.`Gallery`.`id` = `aggr_selection_0_MediaItem`.`galleryId`) WHERE `main`.`Gallery`.`creatorId` = ? ORDER BY `main`.`Gallery`.`createdAt` DESC LIMIT ? OFFSET ?
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 69,
+      "method": "GET",
+      "url": "/api/creator/conversations",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"1f6-eIE0qsgDE/qTn67e/Ni98T+ype0\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39342
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "95",
+        "ratelimit-reset": "60",
+        "etag": "W/\"1f6-eIE0qsgDE/qTn67e/Ni98T+ype0\""
+      }
+    }
+    [35mresponseTime[39m: 31
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 71,
+      "method": "GET",
+      "url": "/api/creator/media/galleries",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"393-2QyKA/EpoPxl23imWV06EdkoHfw\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39350
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "93",
+        "ratelimit-reset": "60",
+        "etag": "W/\"393-2QyKA/EpoPxl23imWV06EdkoHfw\""
+      }
+    }
+    [35mresponseTime[39m: 6
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`role`, `main`.`User`.`email`, `main`.`User`.`isSuspended` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+[19:06:24] [32mINFO[39m: [36mSocket.io: User authenticated[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35msocketId[39m: "yr0rV1eUbwgnwSiyAAAF"
+[19:06:24] [32mINFO[39m: [36mSocket.io: Client connected[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35msocketId[39m: "yr0rV1eUbwgnwSiyAAAF"
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE `main`.`Conversation`.`creatorId` = ? ORDER BY `main`.`Conversation`.`updatedAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`ConversationParticipant`.`id`, `main`.`ConversationParticipant`.`conversationId`, `main`.`ConversationParticipant`.`userId`, `main`.`ConversationParticipant`.`joinedAt`, `main`.`ConversationParticipant`.`lastReadAt` FROM `main`.`ConversationParticipant` WHERE `main`.`ConversationParticipant`.`conversationId` IN (?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`content`, `main`.`Message`.`createdAt`, `main`.`Message`.`isRead`, `main`.`Message`.`senderId`, `main`.`Message`.`conversationId` FROM `main`.`Message` WHERE `main`.`Message`.`conversationId` IN (?) ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl`, `main`.`User`.`role` FROM `main`.`User` WHERE `main`.`User`.`id` IN (?,?) LIMIT ? OFFSET ?
+[19:06:24] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 72,
+      "method": "GET",
+      "url": "/api/creator/conversations",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"1f6-eIE0qsgDE/qTn67e/Ni98T+ype0\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39366
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "92",
+        "ratelimit-reset": "60",
+        "etag": "W/\"1f6-eIE0qsgDE/qTn67e/Ni98T+ype0\""
+      }
+    }
+    [35mresponseTime[39m: 62
+[19:06:25] [32mINFO[39m: [36mSocket.io: User is online[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt` FROM `main`.`Gallery` WHERE (`main`.`Gallery`.`id` = ? AND `main`.`Gallery`.`creatorId` = ?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`galleryId` IN (?) ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+[19:06:26] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 73,
+      "method": "GET",
+      "url": "/api/creator/media/galleries/a4ad9c79-96f7-410d-bed6-98dae8126285",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"b12-aNK4EqwS6Vid4hCOtEnJcTsTV4Q\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 39366
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "91",
+        "ratelimit-reset": "58",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "2834",
+        "etag": "W/\"b12-2RWajvj8HSvB7eb3FnT7ZImWlsY\""
+      }
+    }
+    [35mresponseTime[39m: 12
+prisma:query SELECT `main`.`Gallery`.`id`, `main`.`Gallery`.`creatorId`, `main`.`Gallery`.`title`, `main`.`Gallery`.`description`, `main`.`Gallery`.`coverUrl`, `main`.`Gallery`.`visibility`, `main`.`Gallery`.`priceCredits`, `main`.`Gallery`.`salesCount`, `main`.`Gallery`.`revenueCredits`, `main`.`Gallery`.`isVisible`, `main`.`Gallery`.`createdAt`, `main`.`Gallery`.`updatedAt` FROM `main`.`Gallery` WHERE (`main`.`Gallery`.`id` = ? AND `main`.`Gallery`.`creatorId` = ?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`MediaItem`.`id`, `main`.`MediaItem`.`creatorId`, `main`.`MediaItem`.`type`, `main`.`MediaItem`.`url`, `main`.`MediaItem`.`thumbnailUrl`, `main`.`MediaItem`.`visibility`, `main`.`MediaItem`.`priceCredits`, `main`.`MediaItem`.`description`, `main`.`MediaItem`.`galleryId`, `main`.`MediaItem`.`sortOrder`, `main`.`MediaItem`.`fileSizeBytes`, `main`.`MediaItem`.`durationSec`, `main`.`MediaItem`.`isFlagged`, `main`.`MediaItem`.`isVisible`, `main`.`MediaItem`.`salesCount`, `main`.`MediaItem`.`revenueCredits`, `main`.`MediaItem`.`uploadDate` FROM `main`.`MediaItem` WHERE `main`.`MediaItem`.`galleryId` IN (?) ORDER BY `main`.`MediaItem`.`uploadDate` DESC LIMIT ? OFFSET ?
+[19:06:53] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 74,
+      "method": "GET",
+      "url": "/api/creator/media/galleries/a4ad9c79-96f7-410d-bed6-98dae8126285",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"b12-2RWajvj8HSvB7eb3FnT7ZImWlsY\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 45396
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "90",
+        "ratelimit-reset": "31",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "2834",
+        "etag": "W/\"b12-kPB60rC2N1oQNkvI1KjbjIqB/f0\""
+      }
+    }
+    [35mresponseTime[39m: 23
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE (`main`.`Conversation`.`id` = ? AND (`main`.`Conversation`.`creatorId` = ? OR `main`.`Conversation`.`clientId` = ?)) LIMIT ? OFFSET ?
+[19:07:25] [32mINFO[39m: [36mSocket.io: User joined conversation[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35mconversationId[39m: "b3a46136-166a-493a-8e20-f1a5bf1f4d7f"
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE (`main`.`Conversation`.`id` = ? AND (`main`.`Conversation`.`creatorId` = ? OR `main`.`Conversation`.`clientId` = ?)) LIMIT ? OFFSET ?
+[19:07:25] [32mINFO[39m: [36mSocket.io: User left conversation[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35mconversationId[39m: "b3a46136-166a-493a-8e20-f1a5bf1f4d7f"
+[19:07:25] [32mINFO[39m: [36mSocket.io: User joined conversation[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35mconversationId[39m: "b3a46136-166a-493a-8e20-f1a5bf1f4d7f"
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE (`main`.`Conversation`.`creatorId` = ? AND `main`.`Conversation`.`clientId` = ?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`conversationId`, `main`.`Message`.`senderId`, `main`.`Message`.`recipientId`, `main`.`Message`.`content`, `main`.`Message`.`type`, `main`.`Message`.`isPaid`, `main`.`Message`.`price`, `main`.`Message`.`isUnlocked`, `main`.`Message`.`isTip`, `main`.`Message`.`tipAmount`, `main`.`Message`.`isAuto`, `main`.`Message`.`isRead`, `main`.`Message`.`readAt`, `main`.`Message`.`createdAt` FROM `main`.`Message` WHERE `main`.`Message`.`conversationId` IN (?) ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl` FROM `main`.`User` WHERE `main`.`User`.`id` IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`MessageMedia`.`id`, `main`.`MessageMedia`.`messageId`, `main`.`MessageMedia`.`libraryItemId` FROM `main`.`MessageMedia` WHERE `main`.`MessageMedia`.`messageId` IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`LibraryItem`.`id`, `main`.`LibraryItem`.`creatorId`, `main`.`LibraryItem`.`folderId`, `main`.`LibraryItem`.`url`, `main`.`LibraryItem`.`thumbnailUrl`, `main`.`LibraryItem`.`type`, `main`.`LibraryItem`.`filename`, `main`.`LibraryItem`.`sizeBytes`, `main`.`LibraryItem`.`durationSec`, `main`.`LibraryItem`.`metadata`, `main`.`LibraryItem`.`createdAt` FROM `main`.`LibraryItem` WHERE `main`.`LibraryItem`.`id` IN (NULL) LIMIT ? OFFSET ?
+[19:07:25] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 75,
+      "method": "GET",
+      "url": "/api/creator/conversations/3a056529-5a8c-4e8e-ac9f-e15399515bc3/messages",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"2d13-Ss4Zf/LgEcYJfnrNbK7tiGKs+QI\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 44840
+    }
+    [35mres[39m: {
+      "statusCode": 200,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "99",
+        "ratelimit-reset": "60",
+        "content-type": "application/json; charset=utf-8",
+        "content-length": "12069",
+        "etag": "W/\"2f25-XBE6pMqGYTdyLKxiWJYd1wEqHN4\""
+      }
+    }
+    [35mresponseTime[39m: 11
+prisma:query SELECT `main`.`Conversation`.`id`, `main`.`Conversation`.`creatorId`, `main`.`Conversation`.`clientId`, `main`.`Conversation`.`lastMessageAt`, `main`.`Conversation`.`createdAt`, `main`.`Conversation`.`updatedAt` FROM `main`.`Conversation` WHERE (`main`.`Conversation`.`creatorId` = ? AND `main`.`Conversation`.`clientId` = ?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`conversationId`, `main`.`Message`.`senderId`, `main`.`Message`.`recipientId`, `main`.`Message`.`content`, `main`.`Message`.`type`, `main`.`Message`.`isPaid`, `main`.`Message`.`price`, `main`.`Message`.`isUnlocked`, `main`.`Message`.`isTip`, `main`.`Message`.`tipAmount`, `main`.`Message`.`isAuto`, `main`.`Message`.`isRead`, `main`.`Message`.`readAt`, `main`.`Message`.`createdAt` FROM `main`.`Message` WHERE `main`.`Message`.`conversationId` IN (?) ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl` FROM `main`.`User` WHERE `main`.`User`.`id` IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`MessageMedia`.`id`, `main`.`MessageMedia`.`messageId`, `main`.`MessageMedia`.`libraryItemId` FROM `main`.`MessageMedia` WHERE `main`.`MessageMedia`.`messageId` IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`LibraryItem`.`id`, `main`.`LibraryItem`.`creatorId`, `main`.`LibraryItem`.`folderId`, `main`.`LibraryItem`.`url`, `main`.`LibraryItem`.`thumbnailUrl`, `main`.`LibraryItem`.`type`, `main`.`LibraryItem`.`filename`, `main`.`LibraryItem`.`sizeBytes`, `main`.`LibraryItem`.`durationSec`, `main`.`LibraryItem`.`metadata`, `main`.`LibraryItem`.`createdAt` FROM `main`.`LibraryItem` WHERE `main`.`LibraryItem`.`id` IN (NULL) LIMIT ? OFFSET ?
+[19:07:25] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 76,
+      "method": "GET",
+      "url": "/api/creator/conversations/3a056529-5a8c-4e8e-ac9f-e15399515bc3/messages",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"2f25-XBE6pMqGYTdyLKxiWJYd1wEqHN4\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 44842
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "98",
+        "ratelimit-reset": "60",
+        "etag": "W/\"2f25-XBE6pMqGYTdyLKxiWJYd1wEqHN4\""
+      }
+    }
+    [35mresponseTime[39m: 8
+[19:07:27] [32mINFO[39m: [36mSocket.io: User left conversation[39m
+    [35muserId[39m: "493394a3-9dbe-4198-9a71-d445a1fcffc2"
+    [35mconversationId[39m: "b3a46136-166a-493a-8e20-f1a5bf1f4d7f"
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl`, `main`.`User`.`bio`, `main`.`User`.`bannerUrl`, `main`.`User`.`subscriptionPrice`, `main`.`User`.`coinBalance`, `main`.`User`.`totalEarned`, `main`.`User`.`isVerified`, `main`.`User`.`kycStatus`, `main`.`User`.`iban`, `main`.`User`.`ibanVerified`, `main`.`User`.`createdAt`, `main`.`User`.`updatedAt` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`username`, `main`.`User`.`displayName`, `main`.`User`.`avatarUrl`, `main`.`User`.`bio`, `main`.`User`.`bannerUrl`, `main`.`User`.`subscriptionPrice`, `main`.`User`.`coinBalance`, `main`.`User`.`totalEarned`, `main`.`User`.`isVerified`, `main`.`User`.`kycStatus`, `main`.`User`.`iban`, `main`.`User`.`ibanVerified`, `main`.`User`.`createdAt`, `main`.`User`.`updatedAt` FROM `main`.`User` WHERE (`main`.`User`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+[19:07:27] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 77,
+      "method": "GET",
+      "url": "/api/creator/profile",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"17d-PYjtxBTGtA2+6KCBdpBApO7OLY8\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 44840
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "97",
+        "ratelimit-reset": "59",
+        "etag": "W/\"17d-PYjtxBTGtA2+6KCBdpBApO7OLY8\""
+      }
+    }
+    [35mresponseTime[39m: 8
+[19:07:27] [32mINFO[39m: [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 78,
+      "method": "GET",
+      "url": "/api/creator/profile",
+      "query": {},
+      "params": {},
+      "headers": {
+        "host": "localhost:3001",
+        "connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Linux\"",
+        "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0OTMzOTRhMy05ZGJlLTQxOTgtOWE3MS1kNDQ1YTFmY2ZmYzIiLCJyb2xlIjoiQ1JFQVRPUiIsImVtYWlsIjoiZGVzbWFyY3dvb3BAZ21haWwuY29tIiwiaWF0IjoxNzcyNjUxMDMzLCJleHAiOjE3NzI2NTE5MzN9.MKA3Ex8p3XT9H8VeviguuZuxrhnXphIPbehlgaTGIq0",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "accept": "application/json, text/plain, */*",
+        "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-gpc": "1",
+        "accept-language": "fr-FR,fr;q=0.6",
+        "origin": "http://localhost:3000",
+        "sec-fetch-site": "same-site",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": "http://localhost:3000/",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "if-none-match": "W/\"17d-PYjtxBTGtA2+6KCBdpBApO7OLY8\""
+      },
+      "remoteAddress": "::1",
+      "remotePort": 44840
+    }
+    [35mres[39m: {
+      "statusCode": 304,
+      "headers": {
+        "x-powered-by": "Express",
+        "access-control-allow-origin": "http://localhost:3000",
+        "vary": "Origin",
+        "access-control-allow-credentials": "true",
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "96",
+        "ratelimit-reset": "59",
+        "etag": "W/\"17d-PYjtxBTGtA2+6KCBdpBApO7OLY8\""
+      }
+    }
+    [35mresponseTime[39m: 22
