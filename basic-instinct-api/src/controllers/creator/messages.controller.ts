@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import redis from '../../lib/redis';
+import { extractR2Key, r2Client, R2_BUCKET_NAME } from '../../lib/r2';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const messagesController = {
   // GET /api/creator/conversations - Liste des conversations
@@ -42,6 +45,16 @@ export const messagesController = {
             senderId: true,
           },
         },
+        _count: {
+          select: {
+            messages: {
+              where: {
+                isRead: false,
+                senderId: { not: creatorId as string },
+              },
+            },
+          },
+        },
       },
       take: Number(limit),
       skip: Number(offset),
@@ -53,10 +66,8 @@ export const messagesController = {
       const otherParticipant = conv.participants.find((p) => p.userId !== creatorId);
       const lastMessage = conv.messages[0];
       
-      // Compter messages non lus
-      const unreadCount = conv.messages.filter(
-        (m) => !m.isRead && m.senderId !== creatorId
-      ).length;
+      // Compter messages non lus avec le count de Prisma
+      const unreadCount = conv._count.messages;
 
       // Vérifier la présence Redis
       const clientId = conv.clientId || otherParticipant?.user?.id || null;
@@ -128,7 +139,48 @@ export const messagesController = {
     }
 
     // Inverser pour avoir ordre chronologique
-    const messages = conversation.messages.reverse();
+    const rawMessages = conversation.messages.reverse();
+
+    // Signer les URLs des médias — Les imports sont maintenant en haut du fichier
+
+    const messages = await Promise.all(rawMessages.map(async (msg: any) => {
+      if (!msg.mediaAttachments) return msg;
+
+      const updatedAttachments = await Promise.all(msg.mediaAttachments.map(async (att: any) => {
+        if (!att.libraryItem) return att;
+
+        let displayUrl = att.libraryItem.url;
+        try {
+          const key = extractR2Key(att.libraryItem.url);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+        } catch (e) { /* fallback */ }
+
+        let displayThumbnail = att.libraryItem.thumbnailUrl;
+        if (att.libraryItem.thumbnailUrl) {
+          try {
+            const key = extractR2Key(att.libraryItem.thumbnailUrl);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+          } catch (e) { /* fallback */ }
+        }
+
+        return {
+          ...att,
+          libraryItem: {
+            ...att.libraryItem,
+            url: displayUrl,
+            thumbnailUrl: displayThumbnail,
+            sizeBytes: att.libraryItem.sizeBytes !== null ? Number(att.libraryItem.sizeBytes) : null,
+          }
+        };
+      }));
+
+      return {
+        ...msg,
+        mediaAttachments: updatedAttachments
+      };
+    }));
 
     res.json({
       conversationId: conversation.id,

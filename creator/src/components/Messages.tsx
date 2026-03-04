@@ -294,17 +294,62 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
 
         {realtimeMessages.map(msg => {
           const isMe = msg.senderId !== displayUser.id;
+          const mediaAtts: any[] = (msg as any).mediaAttachments ?? [];
+          const hasMedia = mediaAtts.length > 0;
           
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] md:max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${
+                
+                {/* Bulle message */}
+                <div className={`rounded-2xl shadow-sm text-sm overflow-hidden ${
                   isMe
                     ? 'bg-purple-600 text-white rounded-tr-none'
                     : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
                 }`}>
-                  {msg.content}
+                  
+                  {/* Media preview */}
+                  {hasMedia && mediaAtts.map((att: any) => {
+                    const libItem = att.libraryItem;
+                    const isVideo = libItem?.type === 'video';
+
+                    if (msg.isPaid && !msg.isUnlocked) {
+                      return (
+                        <div key={att.id} className="relative w-48 h-48 bg-gray-900 flex items-center justify-center">
+                          <div className="text-center text-white">
+                            <span className="text-2xl">🔒</span>
+                            <p className="text-xs mt-1 font-bold">{msg.price}🪙</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return isVideo ? (
+                      <video
+                        key={att.id}
+                        src={libItem?.url}
+                        poster={libItem?.thumbnailUrl || undefined}
+                        controls
+                        className="w-full max-w-[240px] max-h-[180px] object-cover"
+                      />
+                    ) : (
+                      <img
+                        key={att.id}
+                        src={libItem?.thumbnailUrl || libItem?.url}
+                        alt="média"
+                        className="w-full max-w-[240px] max-h-[240px] object-cover"
+                      />
+                    );
+                  })}
+
+                  {/* Texte (optionnel si il y a aussi un media) */}
+                  {msg.content && (
+                    <div className="px-4 py-2.5 leading-relaxed whitespace-pre-wrap">
+                      {msg.content}
+                    </div>
+                  )}
                 </div>
+
                 <span className="text-[10px] text-gray-400 mt-1 px-1">
                   {format(msg.createdAt ? new Date(msg.createdAt) : new Date(), 'HH:mm')}
                 </span>
@@ -407,7 +452,7 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
         isOpen={isMediaOpen}
         onClose={() => setIsMediaOpen(false)}
         onSend={(media) => {
-          console.log('Media to send:', media);
+          sendMessage('', media.id, media.isPaid, media.price);
           setIsMediaOpen(false);
         }}
       />

@@ -105,7 +105,7 @@ export function useMessages(conversationId: string | null) {
    * Envoyer un message
    */
   const sendMessage = useCallback(
-    (content: string, mediaId?: string) => {
+    (content: string, mediaId?: string, isPaid?: boolean, price?: number) => {
       if (!conversationId || !isConnected) {
         console.warn('Cannot send message: not connected or no conversation');
         return;
@@ -118,10 +118,10 @@ export function useMessages(conversationId: string | null) {
         id: `temp-${Date.now()}`,
         conversationId,
         senderId: user?.id || 'me',
-        recipientId: 'other', // ID temporaire
+        recipientId: 'other',
         content,
         type: mediaId ? 'media' : 'text',
-        isPaid: false,
+        isPaid: isPaid || false,
         isUnlocked: true,
         createdAt: new Date().toISOString()
       };
@@ -132,12 +132,13 @@ export function useMessages(conversationId: string | null) {
         conversationId,
         content,
         mediaId,
+        isPaid,
+        price,
       });
 
-      // Le vrai message remplacera l'optimistic, ou s'ajoutera et on nettoiera (le cleanup strict sera géré par l'event)
       setSending(false);
     },
-    [conversationId, isConnected, emit]
+    [conversationId, isConnected, emit, user?.id]
   );
 
   /**

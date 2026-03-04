@@ -1,39 +1,87 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Camera, Save, Loader2, Check, AlertCircle, X, Edit2 } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Camera, Save, Loader2, Check, AlertCircle, X, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { profileService, CreatorProfile, UpdateProfilePayload } from '@/services/profile';
-import { cn } from '@/lib/utils';
+import { CropModal } from '@/components/CropModal';
 
-function formatCoins(n: number) {
-  return n.toLocaleString('fr-FR') + ' 🪙';
+// ── Constants ─────────────────────────────────────────────────────────────────
+const CATEGORIES = ['Général','BDSM','Fétichisme','Cosplay','Lingerie','Roleplay','Domination','Soft','Latex','Pieds','Lactation','Bbw','Trans','Couples'];
+const HAIR_OPTS   = ['Brune','Blonde','Rousse','Noire','Châtain','Colorée'];
+const EYE_OPTS    = ['Verts','Bleus','Marron','Noisette','Gris','Noirs'];
+const BODY_OPTS   = ['Mince','Athlétique','Curvy','Petite','BBW'];
+const TATTOO_OPTS = ['Non','Quelques','Beaucoup'];
+const COUNTRY_OPTS = ['France','Belgique','Suisse','Canada','Maroc','Tunisie','Algérie','Autre'];
+
+function parseJson<T>(str: string | null, fallback: T): T {
+  if (!str) return fallback;
+  try { return JSON.parse(str); } catch { return fallback; }
 }
 
+// ── Section wrapper ───────────────────────────────────────────────────────────
+function Section({ title, color, children }: { title: string; color: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-white p-5 md:p-8 rounded-3xl shadow-sm border border-gray-100">
+      <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+        <span className={`w-8 h-1 rounded-full ${color}`} /> {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+const INPUT = "w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-sm";
+const SELECT = "w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all appearance-none text-sm";
+
+// ── dataURL → File ────────────────────────────────────────────────────────────
+function dataUrlToFile(dataUrl: string, filename: string): File {
+  const arr  = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)![1];
+  const bstr = atob(arr[1]);
+  const u8   = new Uint8Array(bstr.length);
+  for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+  return new File([u8], filename, { type: mime });
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export function Profile() {
   const { user } = useAuth();
 
-  // ── State ────────────────────────────────────────────────────────────────────
-  const [profile, setProfile] = useState<CreatorProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
-  const [error, setError]   = useState<string | null>(null);
+  const [profile, setProfile]   = useState<CreatorProfile | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Form fields
-  const [displayName, setDisplayName] = useState('');
-  const [username, setUsername]       = useState('');
-  const [bio, setBio]                 = useState('');
-  const [subPrice, setSubPrice]       = useState(0);
+  const [displayName, setDisplayName]         = useState('');
+  const [username, setUsername]               = useState('');
+  const [age, setAge]                         = useState('');
+  const [country, setCountry]                 = useState('');
+  const [welcomeMessage, setWelcomeMessage]   = useState('');
+  const [subscriberMsg, setSubscriberMsg]     = useState('');
+  const [categories, setCategories]           = useState<string[]>([]);
+  const [tags, setTags]                       = useState<string[]>([]);
+  const [tagInput, setTagInput]               = useState('');
+  const [profilePhotos, setProfilePhotos]     = useState<string[]>([]);
+  const [bannerPreview, setBannerPreview]     = useState<string | null>(null);
+  const [height, setHeight]                   = useState('');
+  const [hairColor, setHairColor]             = useState('');
+  const [eyeColor, setEyeColor]               = useState('');
+  const [bodyType, setBodyType]               = useState('');
+  const [tattoos, setTattoos]                 = useState('');
+  const [subPrice, setSubPrice]               = useState(0);
 
-  // Image preview states
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [bannerUploading, setBannerUploading] = useState(false);
+  // CropModal state
+  const [cropModal, setCropModal] = useState<{
+    open: boolean; src: string; aspect: '1:1' | '16:9'; target: 'banner' | number;
+  }>({ open: false, src: '', aspect: '16:9', target: 'banner' });
 
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef   = useRef<HTMLInputElement>(null);
+  const profileInputRef = useRef<HTMLInputElement>(null);
+  const activeSlotRef   = useRef<number>(0);
 
-  // ── Load profile ─────────────────────────────────────────────────────────────
+  // ── Load profile ────────────────────────────────────────────────────────────
   const loadProfile = useCallback(async () => {
     setLoading(true);
     try {
@@ -41,7 +89,18 @@ export function Profile() {
       setProfile(p);
       setDisplayName(p.displayName ?? '');
       setUsername(p.username ?? '');
-      setBio(p.bio ?? '');
+      setAge(p.age?.toString() ?? '');
+      setCountry(p.country ?? '');
+      setWelcomeMessage(p.welcomeMessage ?? '');
+      setSubscriberMsg(p.subscriberWelcomeMsg ?? '');
+      setCategories(parseJson(p.categories, []));
+      setTags(parseJson(p.tags, []));
+      setProfilePhotos(parseJson(p.profilePhotos, []));
+      setHeight(p.height ?? '');
+      setHairColor(p.hairColor ?? '');
+      setEyeColor(p.eyeColor ?? '');
+      setBodyType(p.bodyType ?? '');
+      setTattoos(p.tattoos ?? '');
       setSubPrice(p.subscriptionPrice ?? 0);
     } catch {
       setError('Impossible de charger le profil');
@@ -52,16 +111,24 @@ export function Profile() {
 
   useEffect(() => { loadProfile(); }, [loadProfile]);
 
-  // ── Save ─────────────────────────────────────────────────────────────────────
+  // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
     try {
       const payload: UpdateProfilePayload = {
         displayName: displayName || undefined,
         username: username || undefined,
-        bio: bio || undefined,
         subscriptionPrice: subPrice,
+        age: age ? Number(age) : null,
+        country: country || undefined,
+        welcomeMessage: welcomeMessage || undefined,
+        subscriberWelcomeMsg: subscriberMsg || undefined,
+        categories, tags, profilePhotos,
+        height: height || undefined,
+        hairColor: hairColor || undefined,
+        eyeColor: eyeColor || undefined,
+        bodyType: bodyType || undefined,
+        tattoos: tattoos || undefined,
       };
       const updated = await profileService.updateProfile(payload);
       setProfile(updated);
@@ -74,238 +141,304 @@ export function Profile() {
     }
   };
 
-  // ── Avatar upload ─────────────────────────────────────────────────────────────
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── File pickers → CropModal ────────────────────────────────────────────────
+  const openFilePicker = (target: 'banner' | number) => {
+    if (target === 'banner') coverInputRef.current?.click();
+    else { activeSlotRef.current = target as number; profileInputRef.current?.click(); }
+  };
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>, type: 'banner' | 'profile') => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const src = ev.target?.result as string;
+      setCropModal({
+        open: true, src,
+        aspect: type === 'banner' ? '16:9' : '1:1',
+        target: type === 'banner' ? 'banner' : activeSlotRef.current,
+      });
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
+  };
 
-    const previewUrl = URL.createObjectURL(file);
-    setAvatarPreview(previewUrl);
-    setAvatarUploading(true);
-    setError(null);
+  // ── After crop → upload to R2 ───────────────────────────────────────────────
+  const handleCropComplete = async (dataUrl: string) => {
+    setUploading(true);
     try {
-      await profileService.uploadAndSetAvatar(file);
+      const file = dataUrlToFile(dataUrl, `photo-${Date.now()}.jpg`);
+
+      if (cropModal.target === 'banner') {
+        const publicUrl = await profileService.uploadAndSetBanner(file);
+        setBannerPreview(publicUrl);
+        setProfile(prev => prev ? { ...prev, bannerUrl: publicUrl } : null);
+      } else {
+        const slotIndex = cropModal.target as number;
+        // Show optimistic preview
+        setProfilePhotos(prev => {
+          const next = [...prev];
+          next[slotIndex] = dataUrl;
+          return next;
+        });
+        // Upload and save
+        const publicUrl = await profileService.uploadImage(file);
+        const updated = await profileService.addProfilePhoto(publicUrl);
+        setProfilePhotos(updated);
+      }
     } catch {
-      setError('Erreur lors de l\'upload de l\'avatar');
-      setAvatarPreview(null);
+      setError("Erreur lors de l'upload de la photo");
     } finally {
-      setAvatarUploading(false);
+      setUploading(false);
     }
   };
 
-  // ── Banner upload ─────────────────────────────────────────────────────────────
-  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-
-    const previewUrl = URL.createObjectURL(file);
-    setBannerPreview(previewUrl);
-    setBannerUploading(true);
-    setError(null);
-    try {
-      await profileService.uploadAndSetBanner(file);
-    } catch {
-      setError('Erreur lors de l\'upload de la bannière');
-      setBannerPreview(null);
-    } finally {
-      setBannerUploading(false);
-    }
+  // ── Categories ──────────────────────────────────────────────────────────────
+  const toggleCategory = (cat: string) => {
+    setCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : prev.length >= 3 ? prev : [...prev, cat]
+    );
   };
 
-  const currentAvatar = avatarPreview ?? profile?.avatarUrl ?? user?.avatarUrl;
+  // ── Tags ────────────────────────────────────────────────────────────────────
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (!t || tags.includes(t)) return;
+    setTags(prev => [...prev, t]);
+    setTagInput('');
+  };
+
+  const removePhotoSlot = async (index: number) => {
+    try {
+      const updated = await profileService.removeProfilePhoto(index);
+      setProfilePhotos(updated);
+    } catch { setError('Erreur suppression photo'); }
+  };
+
   const currentBanner = bannerPreview ?? profile?.bannerUrl;
 
-  // ── Loading state ─────────────────────────────────────────────────────────────
+  // ── Loading skeleton ────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 size={32} className="animate-spin text-purple-500" />
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+        {[220, 160, 200, 220, 180].map((h, i) => (
+          <div key={i} className="bg-gray-200 animate-pulse rounded-3xl" style={{ height: h }} />
+        ))}
       </div>
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto pb-24">
-      {/* Hidden inputs */}
-      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-      <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
+    <div className="p-4 md:p-8 max-w-5xl mx-auto pb-24">
+      {/* Hidden file inputs */}
+      <input ref={coverInputRef}   type="file" accept="image/*" className="hidden" onChange={e => handleFileSelected(e, 'banner')} />
+      <input ref={profileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFileSelected(e, 'profile')} />
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mon Profil</h1>
+      <div className="flex justify-between items-center mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mon Profil</h1>
         <button
           onClick={handleSave}
-          disabled={saving}
-          className={cn(
-            'flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg',
-            saved
-              ? 'bg-green-600 text-white shadow-green-600/20'
-              : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/20'
-          )}
+          disabled={saving || uploading}
+          className={`flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold text-sm transition-all shadow-lg ${saved ? 'bg-green-600 text-white shadow-green-600/20' : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/20'} disabled:opacity-60`}
         >
-          {saving ? <Loader2 size={15} className="animate-spin" /> : saved ? <Check size={15} /> : <Save size={15} />}
+          {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} /> : <Save size={16} />}
           {saving ? 'Sauvegarde...' : saved ? 'Sauvegardé !' : 'Enregistrer'}
         </button>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-5 text-sm">
-          <AlertCircle size={16} className="shrink-0" />
-          {error}
+          <AlertCircle size={16} className="shrink-0" /> {error}
           <button onClick={() => setError(null)} className="ml-auto"><X size={14} /></button>
         </div>
       )}
 
-      <div className="space-y-5">
+      {uploading && (
+        <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-xl px-4 py-3 mb-5 text-sm">
+          <Loader2 size={14} className="animate-spin" /> Upload en cours…
+        </div>
+      )}
 
-        {/* ── Section : Bannière & Avatar ── */}
-        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Banner */}
+      <div className="space-y-6">
+
+        {/* ── Photos ── */}
+        <Section title="Photos" color="bg-purple-500">
+          {/* Bannière */}
+          <label className="block text-sm font-medium text-gray-700 mb-2">Photo de couverture</label>
           <div
-            className="relative h-36 md:h-48 w-full bg-gradient-to-br from-purple-100 to-pink-100 cursor-pointer group"
-            onClick={() => bannerInputRef.current?.click()}
+            className="relative h-36 md:h-48 w-full rounded-2xl overflow-hidden group bg-gradient-to-br from-purple-100 to-pink-100 cursor-pointer mb-6"
+            onClick={() => openFilePicker('banner')}
           >
-            {currentBanner ? (
-              <img src={currentBanner} alt="Bannière" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-purple-300">
-                <Camera size={32} />
-              </div>
-            )}
+            {currentBanner
+              ? <img src={currentBanner} crossOrigin="anonymous" loading="lazy" alt="Couverture" className="w-full h-full object-cover" />
+              : <div className="w-full h-full flex items-center justify-center text-purple-300"><Camera size={32} /></div>
+            }
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              {bannerUploading ? (
-                <Loader2 size={24} className="text-white animate-spin" />
-              ) : (
-                <span className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-xl border border-white/40 text-sm font-medium">
-                  <Camera size={16} /> Changer la bannière
-                </span>
-              )}
+              <span className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-xl border border-white/40 text-sm font-medium">
+                <Camera size={16} /> Changer la couverture
+              </span>
             </div>
           </div>
 
-          {/* Avatar */}
-          <div className="px-6 pb-6">
-            <div className="flex items-end gap-4 -mt-10 mb-4">
-              <div
-                className="relative w-20 h-20 rounded-2xl border-4 border-white shadow-lg cursor-pointer group shrink-0"
-                onClick={() => avatarInputRef.current?.click()}
-              >
-                {currentAvatar ? (
-                  <img src={currentAvatar} alt="Avatar" className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  <div className="w-full h-full bg-purple-100 rounded-xl flex items-center justify-center text-purple-400">
-                    <Camera size={20} />
+          {/* Photos profil (4 slots) */}
+          <label className="block text-sm font-medium text-gray-700 mb-2">Photos de profil (max 4)</label>
+          <div className="grid grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => {
+              const url = profilePhotos[i];
+              return url ? (
+                <div key={i} className="aspect-square rounded-2xl overflow-hidden relative group cursor-pointer border border-gray-100 shadow-sm">
+                  <img src={url} crossOrigin="anonymous" loading="lazy" alt="" className="w-full h-full object-cover" onClick={() => openFilePicker(i)} />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <button onClick={() => openFilePicker(i)} className="p-1.5 bg-white/90 rounded-full text-gray-700 hover:bg-white transition-colors"><Edit2 size={14} /></button>
+                    <button onClick={() => removePhotoSlot(i)} className="p-1.5 bg-white/90 rounded-full text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                  {avatarUploading ? (
-                    <Loader2 size={16} className="text-white animate-spin" />
-                  ) : (
-                    <Edit2 size={14} className="text-white" />
-                  )}
                 </div>
-              </div>
-              <div>
-                <p className="font-bold text-gray-900">{displayName || profile?.username || 'Votre nom'}</p>
-                <p className="text-sm text-gray-500">@{username || 'username'}</p>
-              </div>
-            </div>
-
-            {/* Stats rapides */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Solde',         value: formatCoins(profile?.coinBalance ?? 0) },
-                { label: 'Total gagné',   value: formatCoins(profile?.totalEarned ?? 0) },
-                { label: 'Statut KYC',    value: profile?.isVerified ? '✅ Vérifié' : profile?.kycStatus === 'submitted' ? '⏳ En attente' : '⚪ Non soumis' },
-              ].map(stat => (
-                <div key={stat.label} className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
-                  <p className="text-sm font-bold text-gray-900 truncate">{stat.value}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+              ) : (
+                <button
+                  key={i}
+                  onClick={() => openFilePicker(i)}
+                  className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all gap-1"
+                >
+                  <Plus size={20} />
+                  <span className="text-[10px] font-medium">Ajouter</span>
+                </button>
+              );
+            })}
           </div>
-        </section>
+        </Section>
 
-        {/* ── Section : Informations ── */}
-        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 md:p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="w-6 h-1 bg-blue-500 rounded-full" /> Informations
-          </h2>
+        {/* ── Informations ── */}
+        <Section title="Informations" color="bg-blue-500">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom public</label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                placeholder="Votre nom affiché"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all text-sm"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nom public</label>
+              <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Luna Star" className={INPUT} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom d'utilisateur</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nom d'utilisateur</label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())}
-                  placeholder="username"
-                  className="w-full pl-7 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all text-sm"
-                />
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
+                <input type="text" value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())} placeholder="luna_star" className={`${INPUT} pl-7`} />
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">Lettres, chiffres, underscore uniquement</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-              <input
-                type="email"
-                value={profile?.email ?? ''}
-                disabled
-                className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Âge affiché</label>
+              <input type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="24" min={18} max={99} className={INPUT} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix d'abonnement (Pièces)</label>
-              <input
-                type="number"
-                value={subPrice}
-                min={0}
-                onChange={e => setSubPrice(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all text-sm"
-              />
-              <p className="text-[10px] text-gray-400 mt-1">0 = gratuit</p>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Pays</label>
+              <select value={country} onChange={e => setCountry(e.target.value)} className={SELECT}>
+                <option value="">— Sélectionner —</option>
+                {COUNTRY_OPTS.map(c => <option key={c}>{c}</option>)}
+              </select>
             </div>
           </div>
-        </section>
+        </Section>
 
-        {/* ── Section : Bio ── */}
-        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 md:p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="w-6 h-1 bg-pink-500 rounded-full" /> Bio
-          </h2>
-          <div>
-            <div className="flex justify-between mb-1.5">
-              <label className="text-sm font-medium text-gray-700">Description publique</label>
-              <span className="text-xs text-gray-400">{bio.length}/500</span>
-            </div>
-            <textarea
-              value={bio}
-              onChange={e => setBio(e.target.value)}
-              maxLength={500}
-              rows={4}
-              placeholder="Décris-toi en quelques mots..."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all resize-none text-sm"
-            />
+        {/* ── Bio & Description ── */}
+        <Section title="Bio & Description" color="bg-pink-500">
+          <div className="space-y-5">
+            {[
+              { label: "Message d'accueil (public)", val: welcomeMessage, set: setWelcomeMessage, max: 300, rows: 3 },
+              { label: "Message de bienvenue (nouveaux abonnés)", val: subscriberMsg, set: setSubscriberMsg, max: 500, rows: 4 },
+            ].map(f => (
+              <div key={f.label}>
+                <div className="flex justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">{f.label}</label>
+                  <span className="text-xs text-gray-400">{f.val.length}/{f.max}</span>
+                </div>
+                <textarea value={f.val} onChange={e => f.set(e.target.value)} maxLength={f.max} rows={f.rows}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none text-sm" />
+              </div>
+            ))}
           </div>
-        </section>
+        </Section>
+
+        {/* ── Catégories & Tags ── */}
+        <Section title="Catégories & Tags" color="bg-orange-500">
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-gray-700">Catégories (max 3)</label>
+              <span className="text-xs text-gray-400">{categories.length}/3 sélectionnées</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map(cat => {
+                const active   = categories.includes(cat);
+                const disabled = !active && categories.length >= 3;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => toggleCategory(cat)}
+                    disabled={disabled}
+                    className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all ${
+                      active   ? 'bg-gray-900 text-white border-gray-900' :
+                      disabled ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' :
+                                 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Tags libres</label>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {tags.map(tag => (
+                  <span key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-100 text-purple-700 rounded-lg text-sm font-medium">
+                    {tag}
+                    <button onClick={() => setTags(prev => prev.filter(t => t !== tag))} className="hover:text-purple-900"><X size={12} /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                placeholder="Nouveau tag..." className={`${INPUT} flex-1`} />
+              <button onClick={addTag} className="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">Ajouter</button>
+            </div>
+          </div>
+        </Section>
+
+        {/* ── Physique ── */}
+        <Section title="Physique (optionnel)" color="bg-teal-500">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Taille</label>
+              <input type="text" value={height} onChange={e => setHeight(e.target.value)} placeholder="165cm" className={INPUT} />
+            </div>
+            {[
+              { label: 'Cheveux', val: hairColor, set: setHairColor, opts: HAIR_OPTS },
+              { label: 'Yeux',    val: eyeColor,  set: setEyeColor,  opts: EYE_OPTS  },
+              { label: 'Morpho',  val: bodyType,  set: setBodyType,  opts: BODY_OPTS },
+              { label: 'Tatouages', val: tattoos, set: setTattoos,   opts: TATTOO_OPTS },
+            ].map(f => (
+              <div key={f.label}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{f.label}</label>
+                <select value={f.val} onChange={e => f.set(e.target.value)} className={SELECT}>
+                  <option value="">— Choisir —</option>
+                  {f.opts.map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        </Section>
 
       </div>
+
+      {/* CropModal */}
+      <CropModal
+        isOpen={cropModal.open}
+        onClose={() => setCropModal(m => ({ ...m, open: false }))}
+        imageSrc={cropModal.src}
+        aspect={cropModal.aspect}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

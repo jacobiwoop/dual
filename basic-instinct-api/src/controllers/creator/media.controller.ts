@@ -53,12 +53,12 @@ export const mediaController = {
           if (item.url) {
             const key = extractR2Key(item.url);
             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
           }
           if (item.thumbnailUrl) {
             const key = extractR2Key(item.thumbnailUrl);
             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-            displayThumbnailUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+            displayThumbnailUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
           }
         } catch {
           // Fallback to raw URLs
@@ -105,7 +105,7 @@ export const mediaController = {
           try {
             const key = extractR2Key(gallery.coverUrl);
             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-            displayCoverUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+            displayCoverUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
           } catch {
             // Fallback
           }
@@ -132,7 +132,7 @@ export const mediaController = {
 
     try {
       const gallery = await prisma.gallery.findFirst({
-        where: { id, creatorId },
+        where: { id: id as string, creatorId },
         include: {
           items: {
             orderBy: { uploadDate: 'desc' },
@@ -150,7 +150,7 @@ export const mediaController = {
         try {
           const key = extractR2Key(gallery.coverUrl);
           const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-          displayCoverUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          displayCoverUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
         } catch {}
       }
 
@@ -162,12 +162,12 @@ export const mediaController = {
           if (item.url) {
             const key = extractR2Key(item.url);
             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
           }
           if (item.thumbnailUrl) {
             const key = extractR2Key(item.thumbnailUrl);
             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-            displayThumbnailUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+            displayThumbnailUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
           }
         } catch {}
 
@@ -237,7 +237,7 @@ export const mediaController = {
       const { title, description, priceCredits, visibility, coverKey } = req.body;
       
       const existing = await prisma.gallery.findFirst({
-        where: { id, creatorId }
+        where: { id: id as string, creatorId }
       });
 
       if (!existing) {
@@ -257,7 +257,7 @@ export const mediaController = {
       }
 
       const gallery = await prisma.gallery.update({
-        where: { id },
+        where: { id: id as string },
         data: dataToUpdate,
       });
 
@@ -298,11 +298,16 @@ export const mediaController = {
         expiresIn: 3600,
       });
 
+      const publicUrl = process.env.R2_PUBLIC_URL
+        ? `${process.env.R2_PUBLIC_URL}/${key}`
+        : `https://pub-${process.env.R2_ACCOUNT_ID}.r2.dev/${key}`;
+
       logger.info(`Generated presigned URL for ${type}: ${key}`);
 
       res.json({
         uploadUrl,
         key,
+        publicUrl,
         expiresIn: 3600,
         message: 'Uploadez le fichier vers cette URL avec une requête PUT',
       });
@@ -415,6 +420,43 @@ export const mediaController = {
       logger.error('Error generating signed URL:', error);
       res.status(500).json({
         error: 'Erreur lors de la génération de l\'URL',
+        details: error.message,
+      });
+    }
+  },
+
+  // DELETE /api/creator/media/galleries/:id
+  async deleteGallery(req: Request, res: Response) {
+    const { id } = req.params;
+    const creatorId = req.user!.userId as string;
+
+    try {
+      const gallery = await prisma.gallery.findFirst({
+        where: { id: id as string, creatorId },
+        include: { items: true },
+      });
+
+      if (!gallery) return res.status(404).json({ error: 'Galerie non trouvée' });
+
+      // Supprimer les visuels associés de R2 (optimisé)
+      const deletePromises = gallery.items.map((item) => {
+        const key = extractR2Key(item.url);
+        return deleteFromR2(key);
+      });
+      await Promise.all(deletePromises);
+
+      // Prisma cascade delete les MediaItems
+      await prisma.gallery.delete({
+        where: { id: id as string },
+      });
+
+      logger.info(`Gallery deleted: ${id}`);
+
+      res.json({ success: true, message: 'Galerie supprimée' });
+    } catch (error: any) {
+      logger.error('Error deleting gallery:', error);
+      res.status(500).json({
+        error: 'Erreur lors de la suppression de la galerie',
         details: error.message,
       });
     }

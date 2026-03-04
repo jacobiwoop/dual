@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Upload, Lock, ChevronLeft, Image as ImageIcon, Film, Check } from 'lucide-react';
-import { LIBRARY_ITEMS, LIBRARY_FOLDERS } from '@/data/mockData';
+import { libraryService, LibraryItem, LibraryFolder } from '@/services/library';
 import { cn } from '@/lib/utils';
 
 type Tab = 'all' | 'folders';
 
 interface SelectedMedia {
+  id: string;
   url: string;
   type: 'image' | 'video';
   isPaid: boolean;
@@ -21,20 +22,38 @@ interface MessageMediaModalProps {
 export function MessageMediaModal({ isOpen, onClose, onSend }: MessageMediaModalProps) {
   const [tab, setTab]                           = useState<Tab>('all');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [selected, setSelected]                 = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+  const [selected, setSelected]                 = useState<{ id: string; url: string; type: 'image' | 'video' } | null>(null);
   const [isPaid, setIsPaid]                     = useState(false);
   const [price, setPrice]                       = useState(200);
   const uploadRef                               = useRef<HTMLInputElement>(null);
 
+  // Real library data
+  const [items, setItems]     = useState<LibraryItem[]>([]);
+  const [folders, setFolders] = useState<LibraryFolder[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch data when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    Promise.all([libraryService.getItems(), libraryService.getFolders()])
+      .then(([itemsData, foldersData]) => {
+        setItems(itemsData.items);
+        setFolders(foldersData);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const selectedFolder = LIBRARY_FOLDERS.find(g => g.id === selectedFolderId) ?? null;
+  const selectedFolder = folders.find(g => g.id === selectedFolderId) ?? null;
 
   // Médias à afficher
   const mediaToShow = tab === 'all'
-    ? LIBRARY_ITEMS
+    ? items
     : selectedFolder
-      ? LIBRARY_ITEMS.filter(m => m.folderId === selectedFolder.id)
+      ? items.filter(m => m.folderId === selectedFolder.id)
       : null; // null = liste des dossiers
 
   // Navigation dossier — clean, sans `as any`
@@ -122,8 +141,21 @@ export function MessageMediaModal({ isOpen, onClose, onSend }: MessageMediaModal
           {/* ── Grille médias ── */}
           <div className="flex-1 overflow-y-auto p-4">
 
+            {/* Skeleton loader */}
+            {loading && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="aspect-square rounded-xl bg-gray-200 animate-pulse"
+                    style={{ animationDelay: `${i * 50}ms` }}
+                  />
+                ))}
+              </div>
+            )}
+
             {/* Onglet MÉDIAS ou contenu d'un dossier */}
-            {mediaToShow !== null && (
+            {!loading && mediaToShow !== null && (
               mediaToShow.length === 0 ? (
                 <div className="text-center py-16 text-gray-400">
                   <ImageIcon size={32} className="mx-auto mb-2 opacity-40" />
@@ -136,7 +168,7 @@ export function MessageMediaModal({ isOpen, onClose, onSend }: MessageMediaModal
                     return (
                       <button
                         key={item.id}
-                        onClick={() => setSelected(isSelected ? null : { url: item.url, type: item.type })}
+                        onClick={() => setSelected(isSelected ? null : { id: item.id, url: item.url, type: item.type })}
                         className={cn(
                           'relative aspect-square rounded-xl overflow-hidden border-2 transition-all',
                           isSelected
@@ -144,7 +176,16 @@ export function MessageMediaModal({ isOpen, onClose, onSend }: MessageMediaModal
                             : 'border-transparent hover:border-gray-300'
                         )}
                       >
-                        <img src={item.url} alt="" className="w-full h-full object-cover" />
+                        {/* Toujours afficher la miniature — pour les vidéos, fallback si pas de thumbnailUrl */}
+                        {item.thumbnailUrl ? (
+                          <img src={item.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                        ) : item.type === 'video' ? (
+                          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                            <Film size={22} className="text-white/60" />
+                          </div>
+                        ) : (
+                          <img src={item.url} alt="" className="w-full h-full object-cover" />
+                        )}
 
                         {item.type === 'video' && (
                           <div className="absolute bottom-1 left-1 bg-black/60 rounded-md px-1.5 py-0.5">
@@ -167,10 +208,10 @@ export function MessageMediaModal({ isOpen, onClose, onSend }: MessageMediaModal
             )}
 
             {/* Onglet GALERIE — liste des dossiers */}
-            {tab === 'folders' && !selectedFolder && (
+            {!loading && tab === 'folders' && !selectedFolder && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {LIBRARY_FOLDERS.map(folder => {
-                  const count = LIBRARY_ITEMS.filter(m => m.folderId === folder.id).length;
+                {folders.map(folder => {
+                  const count = items.filter(m => m.folderId === folder.id).length;
                   return (
                     <button
                       key={folder.id}

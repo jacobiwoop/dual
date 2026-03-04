@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import 'express-async-errors';
+
 import dotenv from 'dotenv';
 import pinoHttp from 'pino-http';
 import { createServer } from 'http';
@@ -19,6 +20,12 @@ import adminRoutes from './routes/admin';
 dotenv.config();
 
 const app = express();
+
+// Handle BigInt serialization for JSON responses
+app.set('json replacer', (_: string, value: any) => 
+  typeof value === 'bigint' ? value.toString() : value
+);
+
 const PORT = process.env.PORT || 3001;
 
 // Créer le serveur HTTP (nécessaire pour Socket.io)

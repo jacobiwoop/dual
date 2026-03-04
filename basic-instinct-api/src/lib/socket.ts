@@ -4,6 +4,9 @@ import jwt from 'jsonwebtoken';
 import logger from './logger';
 import { prisma } from './prisma';
 import redis from './redis';
+import { r2Client, R2_BUCKET_NAME, extractR2Key } from './r2';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const CORS_ORIGINS = process.env.SOCKET_CORS_ORIGIN?.split(',') || ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:5173'];
@@ -182,9 +185,9 @@ function setupMessageHandlers(io: Server, socket: AuthenticatedSocket) {
   });
 
   // Envoyer un message
-  socket.on('message:send', async (data: { conversationId: string; content: string; mediaId?: string }) => {
+  socket.on('message:send', async (data: { conversationId: string; content?: string; mediaId?: string; isPaid?: boolean; price?: number }) => {
     try {
-      const { conversationId, content, mediaId } = data;
+      const { conversationId, content, mediaId, isPaid, price } = data;
 
       // Vérifier la conversation
       const conversation = await prisma.conversation.findFirst({
@@ -207,18 +210,67 @@ function setupMessageHandlers(io: Server, socket: AuthenticatedSocket) {
       }
 
       // Créer le message en DB
-      const message = await prisma.message.create({
+      const rawMessage = await prisma.message.create({
         data: {
           conversationId,
           senderId: socket.userId,
           recipientId: socket.userId === conversation.creatorId ? conversation.clientId : conversation.creatorId,
-          content,
-          type: 'text',
+          content: content || null,
+          type: mediaId ? 'media' : 'text',
+          isPaid: isPaid || false,
+          price: isPaid && price ? price : null,
+          ...(mediaId && {
+            mediaAttachments: {
+              create: [{ libraryItemId: mediaId }],
+            },
+          }),
         },
         include: {
           sender: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+          mediaAttachments: {
+            include: { libraryItem: true },
+          },
         },
       });
+
+      // Signer les URLs si média présent
+      let message = rawMessage;
+      if (rawMessage.mediaAttachments && rawMessage.mediaAttachments.length > 0) {
+        const updatedAttachments = await Promise.all(rawMessage.mediaAttachments.map(async (att: any) => {
+          if (!att.libraryItem) return att;
+
+          let displayUrl = att.libraryItem.url;
+          try {
+            const key = extractR2Key(att.libraryItem.url);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+          } catch (e) { /* fallback */ }
+
+          let displayThumbnail = att.libraryItem.thumbnailUrl;
+          if (att.libraryItem.thumbnailUrl) {
+            try {
+              const key = extractR2Key(att.libraryItem.thumbnailUrl);
+              const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+              displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+            } catch (e) { /* fallback */ }
+          }
+
+          return {
+            ...att,
+            libraryItem: {
+              ...att.libraryItem,
+              url: displayUrl,
+              thumbnailUrl: displayThumbnail,
+              sizeBytes: att.libraryItem.sizeBytes !== null ? Number(att.libraryItem.sizeBytes) : null,
+            }
+          };
+        }));
+
+        message = {
+          ...rawMessage,
+          mediaAttachments: updatedAttachments as any
+        };
+      }
 
       // Mettre à jour lastMessageAt de la conversation
       await prisma.conversation.update({

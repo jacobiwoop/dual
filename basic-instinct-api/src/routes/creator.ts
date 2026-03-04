@@ -55,6 +55,8 @@ router.get('/profile', profileController.getProfile);
 router.put('/profile', validate(updateProfileSchema), profileController.updateProfile);
 router.post('/profile/avatar', uploadLimiter, profileController.updateAvatar);
 router.post('/profile/banner', uploadLimiter, profileController.updateBanner);
+router.post('/profile/photos', uploadLimiter, profileController.addProfilePhoto);
+router.delete('/profile/photos', profileController.removeProfilePhoto);
 router.put('/profile/payout-settings', creatorPayoutsController.updatePayoutSettings);
 
 // ====================================

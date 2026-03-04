@@ -52,7 +52,7 @@ export const libraryController = {
       try {
         const key = extractR2Key(item.url);
         const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-        displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
       } catch {
         // Fallback: utiliser l'URL directe si la signature échoue
       }
@@ -62,7 +62,7 @@ export const libraryController = {
         try {
           const key = extractR2Key(item.thumbnailUrl);
           const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-          displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
         } catch { /* fallback */ }
       }
 

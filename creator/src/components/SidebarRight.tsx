@@ -47,10 +47,24 @@ export function SidebarRight({
   // ⚠️ Hooks MUST be called before any early return
   const filtered = useMemo(() => {
     return realConversations.filter(conv => {
-      if (!conv.client) return true;
-      return search === '' ||
+      // 1. Appliquer le filtre de recherche (texte)
+      const matchesSearch = !conv.client || search === '' ||
         conv.client.displayName.toLowerCase().includes(search.toLowerCase()) ||
         conv.client.username.toLowerCase().includes(search.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      // 2. Appliquer les filtres spécifiques
+      const tier = (conv.client as any)?.subscriptionTier || 'Normal'; // Fallback pour l'instant
+
+      switch (filter) {
+        case 'unread': return conv.unreadCount > 0;
+        case 'plus':   return tier === 'Plus';
+        case 'normal': return tier === 'Normal';
+        case 'vip':    return tier === 'VIP';
+        case 'all':
+        default:       return true;
+      }
     });
   }, [realConversations, filter, search]);
 

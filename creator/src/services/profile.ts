@@ -8,6 +8,18 @@ export interface CreatorProfile {
   avatarUrl: string | null;
   bannerUrl: string | null;
   bio: string | null;
+  age: number | null;
+  country: string | null;
+  welcomeMessage: string | null;
+  subscriberWelcomeMsg: string | null;
+  categories: string | null;   // JSON string → string[]
+  tags: string | null;         // JSON string → string[]
+  profilePhotos: string | null;// JSON string → string[]
+  height: string | null;
+  hairColor: string | null;
+  eyeColor: string | null;
+  bodyType: string | null;
+  tattoos: string | null;
   subscriptionPrice: number;
   coinBalance: number;
   totalEarned: number;
@@ -25,6 +37,18 @@ export interface UpdateProfilePayload {
   username?: string;
   subscriptionPrice?: number;
   iban?: string;
+  age?: number | null;
+  country?: string;
+  welcomeMessage?: string;
+  subscriberWelcomeMsg?: string;
+  categories?: string[];
+  tags?: string[];
+  profilePhotos?: string[];
+  height?: string;
+  hairColor?: string;
+  eyeColor?: string;
+  bodyType?: string;
+  tattoos?: string;
 }
 
 export const profileService = {
@@ -46,9 +70,18 @@ export const profileService = {
     await api.post('/api/creator/profile/banner', { bannerUrl });
   },
 
-  // Upload an image to R2 then update the profile avatar
-  async uploadAndSetAvatar(file: File): Promise<string> {
-    // Step 1: Get signed URL
+  async addProfilePhoto(photoUrl: string): Promise<string[]> {
+    const { data } = await api.post('/api/creator/profile/photos', { photoUrl });
+    return data.profilePhotos;
+  },
+
+  async removeProfilePhoto(index: number): Promise<string[]> {
+    const { data } = await api.delete('/api/creator/profile/photos', { data: { index } });
+    return data.profilePhotos;
+  },
+
+  // Helper: Upload an image to R2 and return its full public URL
+  async uploadImage(file: File): Promise<string> {
     const { data: urlData } = await api.post('/api/creator/media/upload-url', {
       filename: file.name,
       contentType: file.type,
@@ -56,35 +89,26 @@ export const profileService = {
       size: file.size,
     });
 
-    // Step 2: Upload to R2
+    // Upload directly to R2 via presigned URL (same as library flow)
     await fetch(urlData.uploadUrl, {
       method: 'PUT',
       headers: { 'Content-Type': file.type },
       body: file,
     });
 
-    // Step 3: Build URL and update profile
-    const publicUrl = urlData.key; // The key used as URL reference
-    await profileService.updateAvatar(publicUrl);
-    return publicUrl;
+    // Return the ready-to-use public CDN URL
+    return urlData.publicUrl;
+  },
+
+  async uploadAndSetAvatar(file: File): Promise<string> {
+    const key = await profileService.uploadImage(file);
+    await profileService.updateAvatar(key);
+    return key;
   },
 
   async uploadAndSetBanner(file: File): Promise<string> {
-    const { data: urlData } = await api.post('/api/creator/media/upload-url', {
-      filename: file.name,
-      contentType: file.type,
-      type: 'image',
-      size: file.size,
-    });
-
-    await fetch(urlData.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type },
-      body: file,
-    });
-
-    const publicUrl = urlData.key;
-    await profileService.updateBanner(publicUrl);
-    return publicUrl;
+    const key = await profileService.uploadImage(file);
+    await profileService.updateBanner(key);
+    return key;
   },
 };

@@ -83,6 +83,22 @@ function AuthenticatedApp() {
     fetchConversations();
   }, []);
 
+  // Marquer la conversation comme lue lorsqu'elle est sélectionnée
+  useEffect(() => {
+    if (!selectedConversationId) return;
+    
+    const conv = realConversations.find(c => c.id === selectedConversationId);
+    if (conv && conv.unreadCount > 0) {
+      api.put(`/api/creator/conversations/${conv.clientId}/read`)
+        .then(() => {
+          setRealConversations(prev => prev.map(c => 
+            c.id === selectedConversationId ? { ...c, unreadCount: 0 } : c
+          ));
+        })
+        .catch(e => console.error('Erreur marquer comme lu:', e));
+    }
+  }, [selectedConversationId, realConversations]);
+
   // Écouter les événements de présence WebSocket globalement
   const { on } = useSocket();
   useEffect(() => {
@@ -98,18 +114,53 @@ function AuthenticatedApp() {
       ));
     });
 
+    const unsubNewMessage = on('message:new', (data: { message: any }) => {
+      const msg = data.message;
+      if (msg.senderId === user?.id) return;
+      
+      setRealConversations(prev => {
+        const exists = prev.some(c => c.id === msg.conversationId);
+        
+        if (!exists) {
+          // Nouvelle conversation détectée : on recharge la liste depuis le serveur
+          api.get('/api/creator/conversations').then(res => {
+            const convs: RealConversation[] = res.data.conversations || [];
+            setRealConversations(convs);
+          }).catch(console.error);
+          return prev;
+        }
+
+        // Mise à jour d'une conversation existante
+        return prev.map(c => {
+          if (c.id === msg.conversationId) {
+            return {
+              ...c,
+              unreadCount: c.id === selectedConversationId ? 0 : (c.unreadCount || 0) + 1,
+              lastMessage: msg,
+              updatedAt: msg.createdAt
+            };
+          }
+          return c;
+        });
+      });
+    });
+
     return () => {
       unsubOnline?.();
       unsubOffline?.();
+      unsubNewMessage?.();
     };
-  }, [on]);
+  }, [on, selectedConversationId, user?.id]);
+
+  // Écouter les nouveaux messages (pour incrémenter badge si pas dans la bonne conversation)
+  const totalUnreadMessages = realConversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
 
   return (
     <div className="flex min-h-screen bg-[#F5F5F0] font-sans text-gray-900">
 
       {/* ── Left Sidebar ── */}
       <SidebarLeft
-        unreadMessages={2}
+        unreadMessages={totalUnreadMessages}
         unreadNotifications={3}
         balance={user?.coinBalance || 0}
         userAvatar={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop'}
