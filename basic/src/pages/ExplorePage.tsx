@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Camera, MapPin, Eye } from 'lucide-react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import { Camera, MapPin, Eye, MessageCircle } from 'lucide-react';
 import api from '../services/api';
 
 const TAGS = ['All', 'Verified', 'New'];
@@ -17,8 +17,13 @@ interface Creator {
   postsCount: number;
 }
 
+interface OutletContextType {
+  openChat: (id: string | number) => void;
+}
+
 export const ExplorePage = () => {
   const navigate = useNavigate();
+  const { openChat } = useOutletContext<OutletContextType>();
   const [activeTag, setActiveTag] = useState('All');
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,9 +119,21 @@ export const ExplorePage = () => {
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <span>@{creator.username}</span>
                     </div>
-                    <div className="flex items-center mt-2 gap-3 text-xs text-gray-400">
-                      <span className="flex items-center gap-1"><Camera size={12} /> {creator.postsCount}</span>
-                      <span>❤️ {creator.subscribersCount} abonnés</span>
+                    <div className="flex items-center justify-between mt-2 text-xs text-gray-400 w-full">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1"><Camera size={12} /> {creator.postsCount}</span>
+                        <span className="flex items-center gap-1">❤️ {creator.subscribersCount}</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openChat(creator.id);
+                        }}
+                        className="hover:text-pink-500 transition-colors p-1"
+                        title="Envoyer un message"
+                      >
+                        <MessageCircle size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>

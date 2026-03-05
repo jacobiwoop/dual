@@ -21,4 +21,7 @@ router.get('/:id/url', mediaController.getMediaUrl);
 // Delete
 router.delete('/:id', mediaController.deleteMedia);
 
+// Edit
+router.put('/:id', mediaController.updateMedia);
+
 export default router;

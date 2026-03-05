@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { User, Bell, Lock, CreditCard, LogOut, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const TABS = [
   { id: 'account',       label: 'Mon Compte',       icon: <User size={18} /> },
@@ -9,6 +10,7 @@ const TABS = [
 ];
 
 export const SettingsPage = () => {
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [pushNotifs, setPushNotifs]   = useState(true);
@@ -47,7 +49,10 @@ export const SettingsPage = () => {
               </nav>
               
               <div className="p-4 border-t border-gray-100 bg-red-50/50">
-                <button className="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold w-full px-2 py-2 rounded-lg hover:bg-red-50 transition-colors">
+                <button 
+                  onClick={logout}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700 text-sm font-semibold w-full px-2 py-2 rounded-lg hover:bg-red-50 transition-colors"
+                >
                   <LogOut size={16} />
                   Se déconnecter
                 </button>

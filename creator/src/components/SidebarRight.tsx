@@ -165,7 +165,17 @@ export function SidebarRight({
                     )}
                   </div>
                   <p className={cn("text-xs truncate leading-relaxed", conv.unreadCount > 0 ? "font-semibold text-gray-900" : "text-gray-500")}>
-                    {conv.lastMessage ? conv.lastMessage.content : 'Nouvelle conversation'}
+                    {conv.lastMessage ? (
+                      <>
+                        {conv.lastMessage.senderId !== conv.clientId && "Vous : "}
+                        {conv.lastMessage.content || (
+                          <span className="italic opacity-80 text-[11px]">
+                            {/* On pourrait affiner en vérifiant le type de média si disponible dans lastMessage. For now, simple fallback */}
+                            📸 Média
+                          </span>
+                        )}
+                      </>
+                    ) : 'Nouvelle conversation'}
                   </p>
                 </div>
 

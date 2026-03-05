@@ -45,7 +45,7 @@ export interface Gallery {
 
 export const mediaService = {
   // Get Media Items
-  getItems: async (params?: { galleryId?: string; type?: string; search?: string; limit?: number; offset?: number }) => {
+  getItems: async (params?: { galleryId?: string; type?: string; search?: string; visibility?: string; limit?: number; offset?: number }) => {
     const res = await api.get<{ items: MediaItem[]; total: number; hasMore: boolean }>('/api/creator/media', { params });
     return res.data;
   },
@@ -94,6 +94,12 @@ export const mediaService = {
   updateGallery: async (id: string, data: { title?: string; description?: string; priceCredits?: number; visibility?: string; coverKey?: string | null }) => {
     const res = await api.put<{ gallery: Gallery }>(`/api/creator/media/galleries/${id}`, data);
     return res.data.gallery;
+  },
+
+  // Update Media (pricing/visibility)
+  updateMedia: async (id: string, data: { visibility?: string; priceCredits?: number; description?: string; isVisible?: boolean }) => {
+    const res = await api.put<{ media: MediaItem }>(`/api/creator/media/${id}`, data);
+    return res.data.media;
   },
 
   // Delete Media

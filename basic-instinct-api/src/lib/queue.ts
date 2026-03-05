@@ -58,16 +58,16 @@ mediaQueueEvents.on('failed', ({ jobId, failedReason }) => {
 export const mediaWorker = new Worker(
   'media-processing',
   async (job) => {
-    const { itemId, key, type, action } = job.data;
+    const { itemId, key, type, action, model = 'LibraryItem' } = job.data;
     
-    logger.info({ key, action, type }, `Processing ${type} media: ${itemId}`);
+    logger.info({ key, action, type, model }, `Processing ${type} media: ${itemId}`);
     
     try {
       if (action === 'generate-thumbnail') {
-        logger.info(`🔧 Calling generateThumbnail for ${itemId}`);
-        await generateThumbnail(itemId, key, type);
+        logger.info(`🔧 Calling generateThumbnail for ${itemId} (${model})`);
+        await generateThumbnail(itemId, key, type, model);
       } else if (action === 'process-video') {
-        logger.info(`🔧 Calling processVideo for ${itemId}`);
+        logger.info(`🔧 Calling processVideo for ${itemId} (${model})`);
         await processVideo(itemId, key);
       } else if (action === 'generate-variants') {
         logger.info(`🔧 Calling generateImageVariants for ${itemId}`);
@@ -140,8 +140,8 @@ async function uploadToR2(key: string, buffer: Buffer, contentType: string): Pro
 /**
  * Générer une thumbnail pour une image ou vidéo
  */
-async function generateThumbnail(itemId: string, key: string, type: string) {
-  logger.info(`Generating thumbnail for ${type}: ${itemId}`);
+async function generateThumbnail(itemId: string, key: string, type: string, model: 'LibraryItem' | 'MediaItem' = 'LibraryItem') {
+  logger.info(`Generating thumbnail for ${type}: ${itemId} on ${model}`);
   
   try {
     if (type === 'image') {
@@ -162,10 +162,17 @@ async function generateThumbnail(itemId: string, key: string, type: string) {
       const thumbnailUrl = await uploadToR2(thumbnailKey, thumbnailBuffer, 'image/jpeg');
       
       // Mettre à jour la DB
-      await prisma.libraryItem.update({
-        where: { id: itemId },
-        data: { thumbnailUrl },
-      });
+      if (model === 'MediaItem') {
+        await prisma.mediaItem.update({
+          where: { id: itemId },
+          data: { thumbnailUrl },
+        });
+      } else {
+        await prisma.libraryItem.update({
+          where: { id: itemId },
+          data: { thumbnailUrl },
+        });
+      }
       
       logger.info(`✅ Thumbnail generated for image: ${itemId}`);
     } else if (type === 'video') {
@@ -188,10 +195,17 @@ async function generateThumbnail(itemId: string, key: string, type: string) {
         const thumbnailUrl = await uploadToR2(thumbnailKey, thumbBuffer, 'image/jpeg');
         
         // 5. Update DB
-        await prisma.libraryItem.update({
-          where: { id: itemId },
-          data: { thumbnailUrl },
-        });
+        if (model === 'MediaItem') {
+          await prisma.mediaItem.update({
+            where: { id: itemId },
+            data: { thumbnailUrl },
+          });
+        } else {
+          await prisma.libraryItem.update({
+            where: { id: itemId },
+            data: { thumbnailUrl },
+          });
+        }
         logger.info(`✅ Video thumbnail generated for: ${itemId}`);
       } finally {
         // 6. Nettoyage
@@ -338,11 +352,12 @@ export async function queueMediaProcessing(
   itemId: string,
   key: string,
   type: 'image' | 'video',
-  action: 'generate-thumbnail' | 'process-video' | 'generate-variants' = 'generate-thumbnail'
+  action: 'generate-thumbnail' | 'process-video' | 'generate-variants' = 'generate-thumbnail',
+  model: 'LibraryItem' | 'MediaItem' = 'LibraryItem'
 ) {
   const job = await mediaQueue.add(
     `${action}-${type}`,
-    { itemId, key, type, action },
+    { itemId, key, type, action, model },
     {
       // Ne pas utiliser jobId fixe pour éviter les conflits avec les anciens jobs
       // jobId: `${itemId}-${action}`,

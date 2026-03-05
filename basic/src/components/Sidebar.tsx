@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Instagram
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -22,6 +23,8 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, onNavigate }: SidebarProps) => {
+  const { logout } = useAuth();
+  
   const handleItemClick = () => {
     if (window.innerWidth < 768) {
       setMobileMenuOpen(false);
@@ -82,12 +85,12 @@ export const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenu
           <NavItem icon={<Send size={20} />} label="Messages" collapsed={collapsed} onClick={() => { onNavigate('/messages'); handleItemClick(); }} />
           <NavItem icon={<BarChart2 size={20} />} label="Acheter 🪙" collapsed={collapsed} onClick={() => { onNavigate('/credits'); handleItemClick(); }} />
           <NavItem icon={<Settings size={20} />} label="Settings" collapsed={collapsed} onClick={() => { onNavigate('/settings'); handleItemClick(); }} />
-          <NavItem icon={<LogOut size={20} />} label="Logout" collapsed={collapsed} onClick={() => { onNavigate('/'); handleItemClick(); }} />
+          <NavItem icon={<LogOut size={20} />} label="Logout" collapsed={collapsed} onClick={() => { logout(); handleItemClick(); }} />
         </nav>
 
         <div className="mt-8 pt-6 border-t border-gray-300/30">
           <button 
-            onClick={() => { onNavigate('/'); handleItemClick(); }}
+            onClick={() => { logout(); handleItemClick(); }}
             className={`flex items-center gap-4 text-gray-700 hover:text-black transition-colors px-4 py-2 w-full ${collapsed ? 'md:justify-center' : ''}`}
           >
             <LogOut size={20} />

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Image as ImageIcon, Ban, StickyNote, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Send, Image as ImageIcon, Ban, StickyNote, Info, ChevronLeft, ChevronRight, Play, X, Video } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ClientInfoDrawer } from '@/components/ClientInfoDrawer';
@@ -8,6 +8,114 @@ import { MessageMediaModal } from '@/components/MessageMediaModal';
 import { useSocket } from '@/hooks/useSocket';
 import { useMessages } from '@/hooks/useMessages';
 import { useTyping } from '@/hooks/useTyping';
+
+// --- SUB-COMPONENT: MediaBubble ---
+// Handles loading state with a skeleton pulse, shows thumbnail only.
+const MediaBubble = ({ 
+  src, 
+  thumbnail, 
+  type, 
+  onClick 
+}: { 
+  src: string; 
+  thumbnail?: string | null; 
+  type: 'image' | 'video';
+  onClick: () => void;
+}) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div 
+      className="relative w-full max-w-[240px] aspect-square bg-gray-100 overflow-hidden cursor-pointer group"
+      onClick={onClick}
+    >
+      {/* SKELETON (Pulse effect) */}
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-gray-300 border-t-gray-400 animate-spin opacity-20" />
+        </div>
+      )}
+
+      {/* THUMBNAIL / POSTER */}
+      <img
+        src={thumbnail || src}
+        alt="média"
+        onLoad={() => setIsLoaded(true)}
+        className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+
+      {/* VIDEO OVERLAY (Play icon) */}
+      {type === 'video' && isLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+          <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg text-purple-600">
+            <Play size={20} className="fill-current ml-0.5" />
+          </div>
+        </div>
+      )}
+      
+      {/* HOVER OVERLAY */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+    </div>
+  );
+};
+
+// --- SUB-COMPONENT: ChatMediaViewer ---
+// Fullscreen viewer like the Library
+const ChatMediaViewer = ({ 
+  media, 
+  onClose 
+}: { 
+  media: { url: string; type: 'image' | 'video'; thumbnail?: string | null }; 
+  onClose: () => void;
+}) => {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] bg-black/95 flex flex-col backdrop-blur-sm" 
+      onClick={onClose}
+    >
+      <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent relative z-10" onClick={e => e.stopPropagation()}>
+        <div className="text-white">
+          <p className="font-semibold text-sm">{media.type === 'video' ? '🎬 Vidéo' : '🖼️ Image'}</p>
+        </div>
+        <button 
+          onClick={onClose} 
+          className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors" 
+          title="Fermer (Échap)"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="flex-1 relative flex items-center justify-center min-h-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="max-w-full max-h-full p-4 flex items-center justify-center w-full h-full">
+          {media.type === 'video' ? (
+            <video 
+              src={media.url} 
+              poster={media.thumbnail || undefined}
+              controls 
+              autoPlay 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" 
+            />
+          ) : (
+            <img 
+              src={media.url} 
+              alt="Média" 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" 
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface RealConversation {
   id: string;
@@ -31,6 +139,7 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
   const [isInfoOpen, setIsInfoOpen]     = useState(false);
   const [isNotesOpen, setIsNotesOpen]   = useState(false);
   const [isMediaOpen, setIsMediaOpen]   = useState(false);
+  const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video'; thumbnail?: string | null } | null>(null);
   const [notes, setNotes]               = useState<Record<string, string>>({});
   const messagesEndRef                  = useRef<HTMLDivElement>(null);
 
@@ -324,20 +433,17 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
                       );
                     }
 
-                    return isVideo ? (
-                      <video
+                    return (
+                      <MediaBubble 
                         key={att.id}
                         src={libItem?.url}
-                        poster={libItem?.thumbnailUrl || undefined}
-                        controls
-                        className="w-full max-w-[240px] max-h-[180px] object-cover"
-                      />
-                    ) : (
-                      <img
-                        key={att.id}
-                        src={libItem?.thumbnailUrl || libItem?.url}
-                        alt="média"
-                        className="w-full max-w-[240px] max-h-[240px] object-cover"
+                        thumbnail={libItem?.thumbnailUrl}
+                        type={libItem?.type as 'image' | 'video'}
+                        onClick={() => setPreviewMedia({
+                          url: libItem.url,
+                          type: libItem.type as 'image' | 'video',
+                          thumbnail: libItem.thumbnailUrl
+                        })}
                       />
                     );
                   })}
@@ -456,6 +562,13 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
           setIsMediaOpen(false);
         }}
       />
+      {/* Media Viewer Modal */}
+      {previewMedia && (
+        <ChatMediaViewer 
+          media={previewMedia} 
+          onClose={() => setPreviewMedia(null)} 
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,7 @@
-import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import { extractR2Key, r2Client, R2_BUCKET_NAME } from '../../lib/r2';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const creatorsController = {
   // GET /api/client/creators - Liste des créateurs (explore)
@@ -31,6 +33,7 @@ export const creatorsController = {
         username: true,
         displayName: true,
         avatarUrl: true,
+        profilePhotos: true,
         bio: true,
         subscriptionPrice: true,
         subscriptionPricePlus: true,
@@ -48,12 +51,36 @@ export const creatorsController = {
       skip: Number(offset),
     });
 
-    res.json({
-      creators: creators.map((c) => ({
+    const signedCreators = await Promise.all(creators.map(async (c) => {
+      let rawAvatarUrl = c.avatarUrl;
+      if (!rawAvatarUrl && c.profilePhotos) {
+        try {
+          const photos = JSON.parse(c.profilePhotos);
+          if (Array.isArray(photos) && photos.length > 0) {
+            rawAvatarUrl = photos[0];
+          }
+        } catch (e) {}
+      }
+
+      let displayAvatarUrl = rawAvatarUrl;
+      if (rawAvatarUrl) {
+        try {
+          const key = extractR2Key(rawAvatarUrl);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          displayAvatarUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+        } catch (e) {}
+      }
+
+      return {
         ...c,
+        avatarUrl: displayAvatarUrl,
         subscribersCount: c._count.subscriptionsAsCreator,
         postsCount: c._count.posts,
-      })),
+      };
+    }));
+
+    res.json({
+      creators: signedCreators,
       hasMore: creators.length === Number(limit),
     });
   },
@@ -76,6 +103,14 @@ export const creatorsController = {
         subscriptionPricePlus: true,
         isVerified: true,
         createdAt: true,
+        age: true,
+        country: true,
+        height: true,
+        hairColor: true,
+        eyeColor: true,
+        bodyType: true,
+        tattoos: true,
+        profilePhotos: true,
         _count: {
           select: {
             subscriptionsAsCreator: true,
@@ -107,9 +142,39 @@ export const creatorsController = {
       });
     }
 
+    let rawAvatarUrl = creator.avatarUrl;
+    if (!rawAvatarUrl && creator.profilePhotos) {
+      try {
+        const photos = JSON.parse(creator.profilePhotos);
+        if (Array.isArray(photos) && photos.length > 0) {
+          rawAvatarUrl = photos[0];
+        }
+      } catch (e) {}
+    }
+
+    let displayAvatarUrl = rawAvatarUrl;
+    if (rawAvatarUrl) {
+      try {
+        const key = extractR2Key(rawAvatarUrl);
+        const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+        displayAvatarUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+      } catch (e) {}
+    }
+
+    let displayBannerUrl = creator.bannerUrl;
+    if (creator.bannerUrl) {
+      try {
+        const key = extractR2Key(creator.bannerUrl);
+        const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+        displayBannerUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+      } catch (e) {}
+    }
+
     res.json({
       creator: {
         ...creator,
+        avatarUrl: displayAvatarUrl,
+        bannerUrl: displayBannerUrl,
         subscribersCount: creator._count.subscriptionsAsCreator,
         postsCount: creator._count.posts,
         galleriesCount: creator._count.galleries,
@@ -155,17 +220,11 @@ export const creatorsController = {
       isSubscribed = sub?.status === 'active';
     }
 
-    // Posts visibles selon statut abonnement
+    // Posts visibles
     const whereClause: any = {
       creatorId: creator.id,
       isVisible: true,
     };
-
-    if (isSubscribed) {
-      whereClause.visibility = { in: ['public', 'subscribers'] };
-    } else {
-      whereClause.visibility = 'public';
-    }
 
     const posts = await prisma.post.findMany({
       where: whereClause,
@@ -185,14 +244,60 @@ export const creatorsController = {
             comments: true,
           },
         },
+        mediaItems: {
+          include: {
+            mediaItem: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: Number(limit),
       skip: Number(offset),
     });
 
+    // URL Signing
+    const signedPosts = await Promise.all(posts.map(async (post) => {
+      let signedAtts = [];
+      if (post.mediaItems && post.mediaItems.length > 0) {
+         signedAtts = await Promise.all(post.mediaItems.map(async (att: any) => {
+           if (!att.mediaItem) return att;
+           let displayUrl = att.mediaItem.url;
+           try {
+             const key = extractR2Key(att.mediaItem.url);
+             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+             displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+           } catch (e) {}
+
+           let displayThumbnail = att.mediaItem.thumbnailUrl;
+           if (att.mediaItem.thumbnailUrl) {
+             try {
+               const key = extractR2Key(att.mediaItem.thumbnailUrl);
+               const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+               displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+             } catch (e) {}
+           }
+           
+           return {
+             ...att,
+             isPremium: !isSubscribed && post.visibility !== 'public',
+             mediaItem: {
+               ...att.mediaItem,
+               url: displayUrl,
+               thumbnailUrl: displayThumbnail,
+               fileSizeBytes: att.mediaItem.fileSizeBytes !== null ? Number(att.mediaItem.fileSizeBytes) : null,
+             }
+           };
+         }));
+      }
+
+      return {
+        ...post,
+        mediaItems: signedAtts
+      }
+    }));
+
     res.json({
-      posts,
+      posts: signedPosts,
       hasMore: posts.length === Number(limit),
     });
   },
@@ -232,27 +337,71 @@ export const creatorsController = {
       isVisible: true,
     };
 
-    if (!isSubscribed) {
-      whereClause.visibility = 'free';
-    }
-
     const galleries = await prisma.gallery.findMany({
       where: whereClause,
       include: {
         _count: {
           select: { items: true },
         },
+        items: {
+          take: 4, // Prendre quelques miniatures pour la cover
+        }
       },
       orderBy: { createdAt: 'desc' },
       take: Number(limit),
       skip: Number(offset),
     });
 
-    res.json({
-      galleries: galleries.map((g) => ({
+    // URL Signing
+    const signedGalleries = await Promise.all(galleries.map(async (g) => {
+      let signedItems = [];
+      if (g.items && g.items.length > 0) {
+        signedItems = await Promise.all(g.items.map(async (item: any) => {
+           let displayUrl = item.url;
+           try {
+             const key = extractR2Key(item.url);
+             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+             displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+           } catch (e) {}
+
+           let displayThumbnail = item.thumbnailUrl;
+           if (item.thumbnailUrl) {
+             try {
+               const key = extractR2Key(item.thumbnailUrl);
+               const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+               displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+             } catch (e) {}
+           }
+           return {
+             ...item,
+             isPremium: !isSubscribed && g.visibility !== 'free',
+             url: displayUrl,
+             thumbnailUrl: displayThumbnail,
+             fileSizeBytes: item.fileSizeBytes !== null ? Number(item.fileSizeBytes) : null,
+           };
+        }));
+      }
+
+      let displayCoverUrl = g.coverUrl;
+      if (g.coverUrl) {
+        try {
+          const key = extractR2Key(g.coverUrl);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          displayCoverUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+        } catch (e) {}
+      }
+
+      return {
         ...g,
+        coverUrl: displayCoverUrl,
         itemsCount: g._count.items,
-      })),
+        items: signedItems,
+      }
+    }));
+
+
+    res.json({
+      galleries: signedGalleries,
       hasMore: galleries.length === Number(limit),
     });
   },

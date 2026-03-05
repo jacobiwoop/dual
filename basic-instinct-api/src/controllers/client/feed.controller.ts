@@ -1,63 +1,47 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import { extractR2Key, r2Client, R2_BUCKET_NAME } from '../../lib/r2';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const feedController = {
-  // GET /api/client/feed - Feed des posts des créateurs suivis
+  // GET /api/client/feed - Feed: liste des créateurs suivis ou à découvrir
   async getFeed(req: Request, res: Response) {
     if (!req.user) {
       return res.status(401).json({ error: 'Non authentifié' });
     }
 
-    const { limit = 20, offset = 0, visibility } = req.query;
+    const { limit = 20, offset = 0 } = req.query;
     const clientId = req.user.userId;
 
     // Récupérer les créateurs auxquels le client est abonné
     const subscriptions = await prisma.subscription.findMany({
-      where: {
-        clientId,
-        status: 'active',
-      },
+      where: { clientId, status: 'active' },
       select: { creatorId: true },
     });
 
     const followedCreatorIds = subscriptions.map((s) => s.creatorId);
 
-    // Si pas d'abonnements, retourner posts publics
-    const whereClause: any = {
-      isVisible: true,
-      ...(followedCreatorIds.length > 0
-        ? {
-            OR: [
-              { visibility: 'public' },
-              {
-                visibility: 'subscribers',
-                creatorId: { in: followedCreatorIds },
-              },
-            ],
-          }
-        : { visibility: 'public' }),
-    };
-
-    if (visibility) {
-      whereClause.visibility = visibility;
-    }
-
-    const posts = await prisma.post.findMany({
-      where: whereClause,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatarUrl: true,
-            isVerified: true,
-          },
-        },
+    // Récupérer les créateurs actifs (via la table User, role = CREATOR)
+    const creators = await prisma.user.findMany({
+      where: {
+        role: 'CREATOR',
+        isActive: true,
+        isSuspended: false,
+      },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        profilePhotos: true,
+        bio: true,
+        isVerified: true,
+        subscriptionPrice: true,
         _count: {
           select: {
-            likes: true,
-            comments: true,
+            posts: true,
+            subscriptionsAsCreator: true,
           },
         },
       },
@@ -66,30 +50,41 @@ export const feedController = {
       skip: Number(offset),
     });
 
-    // Vérifier si le client a liké chaque post
-    const postsWithLikeStatus = await Promise.all(
-      posts.map(async (post) => {
-        const isLiked = await prisma.like.findUnique({
-          where: {
-            postId_userId: {
-              postId: post.id,
-              userId: clientId,
-            },
-          },
-        });
+    // Signer les avatars R2 pour chaque créateur
+    const signedCreators = await Promise.all(
+      creators.map(async (creator) => {
+        let rawAvatarUrl = creator.avatarUrl;
+        if (!rawAvatarUrl && creator.profilePhotos) {
+          try {
+            const photos = JSON.parse(creator.profilePhotos);
+            if (Array.isArray(photos) && photos.length > 0) {
+              rawAvatarUrl = photos[0];
+            }
+          } catch (e) {}
+        }
+
+        let displayAvatarUrl = rawAvatarUrl;
+        if (rawAvatarUrl) {
+          try {
+            const key = extractR2Key(rawAvatarUrl);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayAvatarUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+          } catch (e) {}
+        }
 
         return {
-          ...post,
-          isLiked: !!isLiked,
-          likesCount: post._count.likes,
-          commentsCount: post._count.comments,
+          ...creator,
+          avatarUrl: displayAvatarUrl,
+          postsCount: creator._count.posts,
+          subscribersCount: creator._count.subscriptionsAsCreator,
+          isFollowed: followedCreatorIds.includes(creator.id),
         };
       })
     );
 
     res.json({
-      posts: postsWithLikeStatus,
-      hasMore: posts.length === Number(limit),
+      creators: signedCreators,
+      hasMore: creators.length === Number(limit),
     });
   },
 

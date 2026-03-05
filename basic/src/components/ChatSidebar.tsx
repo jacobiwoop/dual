@@ -1,10 +1,112 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Star, Heart, Paperclip, Send, MoreVertical, Phone, Video, X } from 'lucide-react';
+import { MessageCircle, Star, Heart, Paperclip, Send, MoreVertical, Phone, Video, X, Play } from 'lucide-react';
 import api from '../services/api';
 import { useSocket } from '../hooks/useSocket';
 import { useMessages, Message } from '../hooks/useMessages';
 import { useTyping } from '../hooks/useTyping';
 import { useAuth } from '../context/AuthContext';
+
+// --- SUB-COMPONENT: MediaBubble ---
+const MediaBubble = ({ 
+  src, 
+  thumbnail, 
+  type, 
+  onClick 
+}: { 
+  src: string; 
+  thumbnail?: string | null; 
+  type: 'image' | 'video';
+  onClick: () => void;
+}) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div 
+      className="relative w-full max-w-[240px] aspect-square bg-gray-100 overflow-hidden cursor-pointer group rounded-lg mb-2"
+      onClick={onClick}
+    >
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-gray-300 border-t-gray-400 animate-spin opacity-20" />
+        </div>
+      )}
+
+      <img
+        src={thumbnail || src}
+        alt="média"
+        onLoad={() => setIsLoaded(true)}
+        className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+
+      {type === 'video' && isLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+          <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg text-blue-600">
+            <Play size={20} className="fill-current ml-0.5" />
+          </div>
+        </div>
+      )}
+      
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+    </div>
+  );
+};
+
+// --- SUB-COMPONENT: ChatMediaViewer ---
+const ChatMediaViewer = ({ 
+  media, 
+  onClose 
+}: { 
+  media: { url: string; type: 'image' | 'video'; thumbnail?: string | null }; 
+  onClose: () => void;
+}) => {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] bg-black/95 flex flex-col backdrop-blur-sm" 
+      onClick={onClose}
+    >
+      <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent relative z-10" onClick={e => e.stopPropagation()}>
+        <div className="text-white">
+          <p className="font-semibold text-sm">{media.type === 'video' ? '🎬 Vidéo' : '🖼️ Image'}</p>
+        </div>
+        <button 
+          onClick={onClose} 
+          className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors" 
+          title="Fermer (Échap)"
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      <div className="flex-1 relative flex items-center justify-center min-h-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="max-w-full max-h-full p-4 flex items-center justify-center w-full h-full">
+          {media.type === 'video' ? (
+            <video 
+              src={media.url} 
+              poster={media.thumbnail || undefined}
+              controls 
+              autoPlay 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" 
+            />
+          ) : (
+            <img 
+              src={media.url} 
+              alt="Média" 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl h-[85vh]" 
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface ConversationItem {
   id: string; // conversation ID
@@ -36,6 +138,7 @@ export const ChatSidebar = ({ activeChatId, onSelectChat, isOpen, onClose }: Cha
   const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video'; thumbnail?: string | null } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeChatIndexStr = activeChatId ? activeChatId.toString() : null;
 
@@ -159,13 +262,12 @@ export const ChatSidebar = ({ activeChatId, onSelectChat, isOpen, onClose }: Cha
           fixed bottom-0 right-0 top-[92px] bg-white border-l border-gray-200 shadow-xl z-30 transition-all duration-300 flex
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
           xl:translate-x-0 xl:sticky xl:top-[92px] xl:h-[calc(100vh-92px)] xl:inset-auto
-          w-full sm:w-[400px] xl:w-auto
-          ${activeChatId ? 'xl:w-[640px]' : 'xl:w-80'}
+          w-full sm:w-[400px] xl:w-[740px]
         `}
       >
         {/* Left Side: Chat List */}
         <div className={`
-          flex flex-col h-full border-r border-gray-100 w-full xl:w-80 flex-shrink-0 bg-white
+          flex flex-col h-full border-r border-gray-100 w-full xl:w-95 flex-shrink-0 bg-white
           ${activeChatId ? 'hidden xl:flex' : 'flex'}
         `}>
           {/* Header Tabs */}
@@ -233,7 +335,10 @@ export const ChatSidebar = ({ activeChatId, onSelectChat, isOpen, onClose }: Cha
                     </div>
                     
                     <p className="text-sm text-gray-800 font-medium truncate mt-0.5 flex items-center gap-1">
-                      {conv.lastMessage ? conv.lastMessage.content : 'Nouvelle conversation'}
+                      {conv.lastMessage?.senderId === user?.id && "Vous : "}
+                      {conv.lastMessage ? (
+                         conv.lastMessage.content || "📸 Média"
+                      ) : 'Nouvelle conversation'}
                     </p>
                     
                     {conv.lastMessage && (
@@ -251,10 +356,10 @@ export const ChatSidebar = ({ activeChatId, onSelectChat, isOpen, onClose }: Cha
         {/* Right Side: Active Chat Window — animated wrapper */}
         <div className={`
           overflow-x-hidden transition-[width] duration-300 flex-shrink-0 h-full
-          ${activeChatId ? 'w-full xl:w-80' : 'w-0 xl:w-0'}
+          ${activeChatId ? 'w-full xl:flex-1' : 'w-0 xl:flex-1'}
         `}>
           {displayUser ? (
-            <div className="flex flex-col h-full bg-gray-50 xl:w-80 w-full">
+            <div className="flex flex-col h-full bg-gray-50 w-full">
               {/* Chat Header */}
               <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
                 <div className="flex items-center gap-3">
@@ -297,8 +402,34 @@ export const ChatSidebar = ({ activeChatId, onSelectChat, isOpen, onClose }: Cha
                   msg.senderId === (currentConv?.creatorId || activeChatIndexStr) ? (
                     <div key={msg.id} className="flex gap-3">
                       <img src={displayUser.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80'} alt="Creator" className="w-8 h-8 rounded-full object-cover self-end flex-shrink-0" />
-                      <div className="bg-white p-3 rounded-2xl rounded-bl-none shadow-sm max-w-[75%] border border-gray-100">
-                        <p className="text-sm text-gray-800 break-words whitespace-pre-wrap">{msg.content}</p>
+                      <div className={`p-3 rounded-2xl rounded-bl-none shadow-sm max-w-[75%] border border-gray-100 ${msg.isPaid && !msg.isUnlocked ? 'bg-gray-900 border-none' : 'bg-white'}`}>
+                        {msg.mediaAttachments?.map((att: any) => {
+                          const libItem = att.libraryItem;
+                          if (msg.isPaid && !msg.isUnlocked) {
+                            return (
+                              <div key={att.id} className="relative w-40 h-40 bg-gray-800 flex items-center justify-center rounded-lg mb-2">
+                                <div className="text-center text-white">
+                                  <span className="text-2xl">🔒</span>
+                                  <p className="text-[10px] mt-1 font-bold">{msg.price}🪙</p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <MediaBubble 
+                              key={att.id}
+                              src={libItem?.url}
+                              thumbnail={libItem?.thumbnailUrl}
+                              type={libItem?.type as 'image' | 'video'}
+                              onClick={() => setPreviewMedia({
+                                url: libItem.url,
+                                type: libItem.type as 'image' | 'video',
+                                thumbnail: libItem.thumbnailUrl
+                              })}
+                            />
+                          );
+                        })}
+                        {msg.content && <p className={`text-sm break-words whitespace-pre-wrap ${msg.isPaid && !msg.isUnlocked ? 'text-gray-400 italic' : 'text-gray-800'}`}>{msg.content}</p>}
                         <span className="text-[9px] text-gray-400 block mt-1 text-right">
                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -308,7 +439,20 @@ export const ChatSidebar = ({ activeChatId, onSelectChat, isOpen, onClose }: Cha
                     <div key={msg.id} className="flex gap-3 flex-row-reverse">
                       <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center self-end text-xs font-bold text-white flex-shrink-0">MOI</div>
                       <div className="bg-blue-500 text-white p-3 rounded-2xl rounded-br-none shadow-sm max-w-[75%]">
-                        <p className="text-sm break-words whitespace-pre-wrap">{msg.content}</p>
+                        {msg.mediaAttachments?.map((att: any) => (
+                           <MediaBubble 
+                              key={att.id}
+                              src={att.libraryItem?.url}
+                              thumbnail={att.libraryItem?.thumbnailUrl}
+                              type={att.libraryItem?.type as 'image' | 'video'}
+                              onClick={() => setPreviewMedia({
+                                url: att.libraryItem.url,
+                                type: att.libraryItem.type as 'image' | 'video',
+                                thumbnail: att.libraryItem.thumbnailUrl
+                              })}
+                            />
+                        ))}
+                        {msg.content && <p className="text-sm break-words whitespace-pre-wrap">{msg.content}</p>}
                         <span className="text-[9px] text-blue-100 block mt-1 text-right flex items-center justify-end gap-1">
                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           {msg.readAt && <span className="text-white text-[10px]">✓✓</span>}
@@ -365,13 +509,19 @@ export const ChatSidebar = ({ activeChatId, onSelectChat, isOpen, onClose }: Cha
               </div>
             </div>
           ) : (
-            <div className="flex flex-col h-full bg-gray-50 xl:w-80 w-full items-center justify-center p-6 text-center text-gray-500">
+            <div className="flex flex-col h-full bg-gray-50 w-full items-center justify-center p-6 text-center text-gray-500">
               <MessageCircle size={48} className="text-gray-300 mb-4" />
               <p className="text-sm">Sélectionnez une conversation ou visitez le profil d'un créateur pour démarrer le chat.</p>
             </div>
           )}
         </div>
       </div>
+      {previewMedia && (
+        <ChatMediaViewer 
+          media={previewMedia} 
+          onClose={() => setPreviewMedia(null)} 
+        />
+      )}
     </>
   );
 };

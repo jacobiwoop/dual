@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import redis from '../../lib/redis';
+import { extractR2Key, r2Client, R2_BUCKET_NAME } from '../../lib/r2';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const clientMessagesController = {
   // GET /api/client/conversations - Liste des conversations du client
@@ -44,6 +47,11 @@ export const clientMessagesController = {
             senderId: true,
             isPaid: true,
             isUnlocked: true,
+            mediaAttachments: {
+              include: {
+                libraryItem: true,
+              },
+            },
           },
         },
       },
@@ -66,12 +74,45 @@ export const clientMessagesController = {
         ? (await redis.sismember('presence:online', creatorId)) === 1
         : false;
 
+      let signedLastMessage = lastMessage ? { ...lastMessage } : null;
+      if (lastMessage?.mediaAttachments && lastMessage.mediaAttachments.length > 0) {
+        const signedAtts = await Promise.all(lastMessage.mediaAttachments.map(async (att: any) => {
+          if (!att.libraryItem) return att;
+          let displayUrl = att.libraryItem.url;
+          try {
+            const key = extractR2Key(att.libraryItem.url);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+          } catch (e) {}
+
+          let displayThumbnail = att.libraryItem.thumbnailUrl;
+          if (att.libraryItem.thumbnailUrl) {
+            try {
+              const key = extractR2Key(att.libraryItem.thumbnailUrl);
+              const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+              displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+            } catch (e) {}
+          }
+
+          return {
+            ...att,
+            libraryItem: {
+              ...att.libraryItem,
+              url: displayUrl,
+              thumbnailUrl: displayThumbnail,
+              sizeBytes: att.libraryItem.sizeBytes !== null ? Number(att.libraryItem.sizeBytes) : null,
+            }
+          };
+        }));
+        signedLastMessage = { ...lastMessage, mediaAttachments: signedAtts as any };
+      }
+
       return {
         id: conv.id,
         creatorId: creatorId || null,
         creator: otherParticipant?.user || null,
         isOnline,
-        lastMessage: lastMessage || null,
+        lastMessage: signedLastMessage,
         unreadCount,
         updatedAt: conv.updatedAt,
       };
@@ -145,7 +186,47 @@ export const clientMessagesController = {
       });
     }
 
-    const messages = conversation.messages.reverse();
+    const rawMessages = conversation.messages.reverse();
+
+    // Signer les URLs des médias
+    const messages = await Promise.all(rawMessages.map(async (msg: any) => {
+      if (!msg.mediaAttachments || msg.mediaAttachments.length === 0) return msg;
+
+      const updatedAttachments = await Promise.all(msg.mediaAttachments.map(async (att: any) => {
+        if (!att.libraryItem) return att;
+
+        let displayUrl = att.libraryItem.url;
+        try {
+          const key = extractR2Key(att.libraryItem.url);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+        } catch (e) { /* fallback */ }
+
+        let displayThumbnail = att.libraryItem.thumbnailUrl;
+        if (att.libraryItem.thumbnailUrl) {
+          try {
+            const key = extractR2Key(att.libraryItem.thumbnailUrl);
+            const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+            displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+          } catch (e) { /* fallback */ }
+        }
+
+        return {
+          ...att,
+          libraryItem: {
+            ...att.libraryItem,
+            url: displayUrl,
+            thumbnailUrl: displayThumbnail,
+            sizeBytes: att.libraryItem.sizeBytes !== null ? Number(att.libraryItem.sizeBytes) : null,
+          }
+        };
+      }));
+
+      return {
+        ...msg,
+        mediaAttachments: updatedAttachments
+      };
+    }));
 
     res.json({
       conversationId: conversation.id,

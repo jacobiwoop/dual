@@ -11,7 +11,7 @@ export const mediaController = {
   // Liste des médias publics (MediaItems)
   async getMediaItems(req: Request, res: Response) {
     if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
-    const { galleryId, type, search, limit = 50, offset = 0 } = req.query;
+    const { galleryId, type, search, visibility, limit = 50, offset = 0 } = req.query;
     const creatorId = req.user.userId;
 
     try {
@@ -20,6 +20,7 @@ export const mediaController = {
           creatorId,
           ...(galleryId && { galleryId: galleryId as string }),
           ...(type && { type: type as string }),
+          ...(visibility && { visibility: visibility as string }),
           ...(search && {
             OR: [
               { description: { contains: search as string } },
@@ -41,6 +42,7 @@ export const mediaController = {
           creatorId,
           ...(galleryId && { galleryId: galleryId as string }),
           ...(type && { type: type as string }),
+          ...(visibility && { visibility: visibility as string }),
         },
       });
 
@@ -346,6 +348,9 @@ export const mediaController = {
 
         logger.info(`MediaItem created for gallery ${galleryId}: ${mediaItem.id}`);
 
+        await queueMediaProcessing(mediaItem.id, key, type, 'generate-thumbnail', 'MediaItem');
+        logger.info(`MediaItem queued for thumbnail generation: ${mediaItem.id}`);
+
         res.status(201).json({
           item: { ...mediaItem, fileSizeBytes: size },
           message: 'Upload confirmé.',
@@ -469,7 +474,7 @@ export const mediaController = {
     const creatorId = req.user!.userId;
 
     try {
-      const item = await prisma.libraryItem.findUnique({
+      const item = await prisma.mediaItem.findUnique({
         where: { id: id as string },
       });
 
@@ -481,14 +486,14 @@ export const mediaController = {
         return res.status(403).json({ error: 'Accès refusé' });
       }
 
-      // Vérifier usage dans messages
-      const usageCount = await prisma.messageMedia.count({
-        where: { libraryItemId: id as string },
+      // Vérifier usage dans posts
+      const usageCount = await prisma.postMedia.count({
+        where: { mediaItemId: id as string },
       });
 
       if (usageCount > 0) {
         return res.status(400).json({
-          error: 'Impossible de supprimer un média utilisé dans des messages',
+          error: 'Impossible de supprimer un média utilisé dans des posts',
           usageCount,
         });
       }
@@ -496,9 +501,16 @@ export const mediaController = {
       // Supprimer de R2
       const r2Key = extractR2Key(item.url);
       await deleteFromR2(r2Key);
+      
+      if (item.thumbnailUrl) {
+        try {
+          const thumbKey = extractR2Key(item.thumbnailUrl);
+          await deleteFromR2(thumbKey);
+        } catch (e) {}
+      }
 
       // Supprimer de la DB
-      await prisma.libraryItem.delete({
+      await prisma.mediaItem.delete({
         where: { id: id as string },
       });
 
@@ -511,6 +523,68 @@ export const mediaController = {
         error: 'Erreur lors de la suppression',
         details: error.message,
       });
+    }
+  },
+
+  // PUT /api/creator/media/:id
+  // Modifier un média (visibilité, prix)
+  async updateMedia(req: Request, res: Response) {
+    const { id } = req.params;
+    const creatorId = req.user!.userId;
+    const { visibility, priceCredits, description, isVisible } = req.body;
+
+    try {
+      const item = await prisma.mediaItem.findUnique({
+        where: { id: id as string },
+      });
+
+      if (!item) {
+        return res.status(404).json({ error: 'Média non trouvé' });
+      }
+
+      if (item.creatorId !== creatorId) {
+        return res.status(403).json({ error: 'Accès refusé' });
+      }
+
+      const updated = await prisma.mediaItem.update({
+        where: { id: id as string },
+        data: {
+          visibility: visibility !== undefined ? visibility : item.visibility,
+          priceCredits: priceCredits !== undefined ? parseInt(priceCredits) : item.priceCredits,
+          description: description !== undefined ? description : item.description,
+          isVisible: isVisible !== undefined ? isVisible : item.isVisible,
+        },
+      });
+
+      // Update R2 URL signing for response
+      let displayUrl = updated.url;
+      try {
+        const key = extractR2Key(updated.url);
+        const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+        displayUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+      } catch (e) {}
+
+      let displayThumbnail = updated.thumbnailUrl;
+      if (updated.thumbnailUrl) {
+         try {
+           const key = extractR2Key(updated.thumbnailUrl);
+           const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+           displayThumbnail = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+         } catch(e) {}
+      }
+
+      res.json({
+        success: true,
+        media: {
+           ...updated,
+           url: displayUrl,
+           thumbnailUrl: displayThumbnail,
+           fileSizeBytes: updated.fileSizeBytes !== null ? Number(updated.fileSizeBytes) : null,
+        }
+      });
+    } catch (error: any) {
+      logger.error('Error updating media:', error);
+      res.status(500).json({ error: 'Erreur lors de la modification' });
     }
   },
 };

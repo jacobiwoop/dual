@@ -20,6 +20,10 @@ export interface Message {
     displayName: string;
     avatarUrl: string | null;
   };
+  mediaAttachments?: any[];
+  isPaid: boolean;
+  price?: number;
+  isUnlocked: boolean;
 }
 
 /**
