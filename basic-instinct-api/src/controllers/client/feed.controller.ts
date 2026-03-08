@@ -13,6 +13,8 @@ export const feedController = {
 
     const { limit = 20, offset = 0 } = req.query;
     const clientId = req.user.userId;
+    const take = Number(limit);
+    const skip = Number(offset);
 
     // Récupérer les créateurs auxquels le client est abonné
     const subscriptions = await prisma.subscription.findMany({
@@ -46,45 +48,79 @@ export const feedController = {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: Number(limit),
-      skip: Number(offset),
+      // On ne fait pas le "take/skip" ici car on va "déplier" la liste
     });
 
-    // Signer les avatars R2 pour chaque créateur
-    const signedCreators = await Promise.all(
-      creators.map(async (creator) => {
-        let rawAvatarUrl = creator.avatarUrl;
-        if (!rawAvatarUrl && creator.profilePhotos) {
-          try {
-            const photos = JSON.parse(creator.profilePhotos);
-            if (Array.isArray(photos) && photos.length > 0) {
-              rawAvatarUrl = photos[0];
-            }
-          } catch (e) {}
+    // 1. Déplier les créateurs (Illusion de multiplicité)
+    let virtualList: any[] = [];
+    
+    for (const creator of creators) {
+      let photos: string[] = [];
+      try {
+        if (creator.profilePhotos) {
+          const parsed = JSON.parse(creator.profilePhotos);
+          if (Array.isArray(parsed)) photos = parsed;
         }
+      } catch (e) {}
 
-        let displayAvatarUrl = rawAvatarUrl;
-        if (rawAvatarUrl) {
+      // Si pas de photos additionnelles, on garde juste l'avatar principal
+      if (photos.length === 0) {
+        virtualList.push({ ...creator, virtualId: `${creator.id}_0`, displayPhoto: creator.avatarUrl });
+      } else {
+        // On limite à 4 photos max pour l'illusion
+        const photosToUse = photos.slice(0, 4);
+        photosToUse.forEach((photo, idx) => {
+          virtualList.push({
+            ...creator,
+            virtualId: `${creator.id}_${idx}`,
+            displayPhoto: photo
+          });
+        });
+      }
+    }
+
+    // 2. Mélanger la liste pour que les doublons soient dispersés
+    // Utilisation d'un seed basé sur la date du jour ou autre pour garder une certaine cohérence ?
+    // Pour l'instant on mélange simplement de façon pseudo-aléatoire
+    virtualList.sort(() => Math.random() - 0.5);
+
+    // 3. Appliquer la pagination sur la liste virtuelle
+    const paginatedList = virtualList.slice(skip, skip + take);
+
+    // 4. Signer les URLs pour chaque créateur virtuel
+    const signedCreators = await Promise.all(
+      paginatedList.map(async (vCreator) => {
+        let displayPhotoUrl = vCreator.displayPhoto;
+        
+        if (displayPhotoUrl) {
           try {
-            const key = extractR2Key(rawAvatarUrl);
+            const key = extractR2Key(displayPhotoUrl);
             const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
-            displayAvatarUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
-          } catch (e) {}
+            displayPhotoUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+          } catch (e) {
+            console.error(`Failed to sign photo for ${vCreator.username}`, e);
+          }
         }
 
         return {
-          ...creator,
-          avatarUrl: displayAvatarUrl,
-          postsCount: creator._count.posts,
-          subscribersCount: creator._count.subscriptionsAsCreator,
-          isFollowed: followedCreatorIds.includes(creator.id),
+          id: vCreator.id, // Original ID
+          virtualId: vCreator.virtualId, // ID unique pour React key
+          username: vCreator.username,
+          displayName: vCreator.displayName,
+          avatarUrl: displayPhotoUrl, // URL signée de la photo choisie
+          bio: vCreator.bio,
+          isVerified: vCreator.isVerified,
+          subscriptionPrice: vCreator.subscriptionPrice,
+          postsCount: vCreator._count.posts,
+          subscribersCount: vCreator._count.subscriptionsAsCreator,
+          isFollowed: followedCreatorIds.includes(vCreator.id),
         };
       })
     );
 
     res.json({
       creators: signedCreators,
-      hasMore: creators.length === Number(limit),
+      hasMore: skip + take < virtualList.length,
     });
   },
 

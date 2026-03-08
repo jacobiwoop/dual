@@ -5,6 +5,7 @@ import { creatorsController } from '../controllers/client/creators.controller';
 import { clientMessagesController } from '../controllers/client/messages.controller';
 import { creditsController } from '../controllers/client/credits.controller';
 import { clientPaymentsController } from '../controllers/client/payments.controller';
+import { showsController } from '../controllers/client/shows.controller';
 import { validateBody, validate } from '../middleware/validate';
 import { messageLimiter } from '../middleware/rateLimiter';
 import { 
@@ -62,5 +63,11 @@ router.get('/credits/packs', creditsController.getPacks);
 // ====================================
 router.post('/payments/buy-coins', clientPaymentsController.buyCoins);
 router.get('/payments/history', clientPaymentsController.getPurchaseHistory);
+
+// ====================================
+// SHOWS (Demandes Spéciales)
+// ====================================
+router.get('/shows/:creatorId', showsController.getCreatorShows);
+router.post('/shows/request', showsController.requestShow);
 
 export default router;

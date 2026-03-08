@@ -18,7 +18,7 @@ interface RealConversation {
   clientId: string;
   isOnline: boolean;
   client: { id: string; username: string; displayName: string; avatarUrl: string | null; } | null;
-  lastMessage?: { content: string; createdAt: string; senderId: string; isRead: boolean; } | null;
+  lastMessage?: { content: string; createdAt: string; senderId: string; isRead: boolean; isTip?: boolean; tipAmount?: number | null; } | null;
   unreadCount: number;
   updatedAt: string;
 }
@@ -146,7 +146,7 @@ export function SidebarRight({
                 )}
               >
                 <div className="relative shrink-0">
-                  <img src={avatarUrl || `https://ui-avatars.com/api/?name=${displayName}&background=7c3aed&color=fff`} alt={displayName} className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" />
+                  <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=7c3aed&color=fff`} alt={displayName} className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" />
                   <span className={cn(
                     "absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full shadow-sm",
                     conv.isOnline ? "bg-lime-500" : "bg-gray-400"
@@ -168,12 +168,11 @@ export function SidebarRight({
                     {conv.lastMessage ? (
                       <>
                         {conv.lastMessage.senderId !== conv.clientId && "Vous : "}
-                        {conv.lastMessage.content || (
+                        {conv.lastMessage.isTip ? "🎁 Cadeau" : (conv.lastMessage.content || (
                           <span className="italic opacity-80 text-[11px]">
-                            {/* On pourrait affiner en vérifiant le type de média si disponible dans lastMessage. For now, simple fallback */}
                             📸 Média
                           </span>
-                        )}
+                        ))}
                       </>
                     ) : 'Nouvelle conversation'}
                   </p>

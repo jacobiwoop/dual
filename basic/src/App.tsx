@@ -9,7 +9,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeChatId, setActiveChatId] = useState<string | number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(window.innerWidth >= 1280);
 
   return (
     <div className="bg-white min-h-screen font-sans flex">

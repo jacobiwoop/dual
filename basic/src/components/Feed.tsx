@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, BadgeCheck } from 'lucide-react';
 import api from '../services/api';
+import { SkeletonCard } from './shared/SkeletonCard';
 
 interface FeedProps {
   onOpenChat: (id: string | number) => void;
@@ -25,21 +26,61 @@ const FALLBACKS = [
 
 export const Feed = ({ onOpenChat, isChatActive, onClickCard }: FeedProps) => {
   const [creators, setCreators] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const LIMIT = 20;
 
-  useEffect(() => {
-    const fetchFeed = async () => {
-      try {
-        const res = await api.get('/api/client/feed');
-        setCreators(res.data.creators || []);
-      } catch (err) {
-        console.error('Error fetching feed:', err);
-      } finally {
-        setLoading(false);
+  const fetchFeed = async (pageNum: number) => {
+    if (loading || (!hasMore && pageNum !== 0)) return;
+    
+    setLoading(true);
+    try {
+      const offset = pageNum * LIMIT;
+      const res = await api.get(`/api/client/feed?limit=${LIMIT}&offset=${offset}`);
+      
+      const newCreators = res.data.creators || [];
+      if (pageNum === 0) {
+        setCreators(newCreators);
+      } else {
+        setCreators(prev => [...prev, ...newCreators]);
       }
-    };
-    fetchFeed();
+      
+      setHasMore(res.data.hasMore);
+    } catch (err) {
+      console.error('Error fetching feed:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchFeed(0);
   }, []);
+
+  // Intersection Observer for Infinite Scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && hasMore) {
+          setPage(prev => {
+            const nextPage = prev + 1;
+            fetchFeed(nextPage);
+            return nextPage;
+          });
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    const target = document.querySelector('#feed-end-sentinel');
+    if (target) observer.observe(target);
+
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [loading, hasMore]);
 
   return (
     <div>
@@ -54,25 +95,31 @@ export const Feed = ({ onOpenChat, isChatActive, onClickCard }: FeedProps) => {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E1306C]"></div>
+      {/* Show skeleton on initial load */}
+      {loading && creators.length === 0 ? (
+        <div className={`columns-2 gap-2 md:gap-6 space-y-2 md:space-y-6 ${isChatActive ? 'xl:columns-2' : 'xl:columns-3'}`}>
+          {Array.from({ length: 12 }).map((_, index) => (
+            <SkeletonCard key={`skeleton-${index}`} variant="feed" />
+          ))}
         </div>
-      ) : creators.length === 0 ? (
+      ) : creators.length === 0 && !loading ? (
         <div className="text-center py-20 text-gray-500 border border-dashed border-gray-300 rounded-xl bg-white mt-4">
           Aucun créateur disponible pour le moment.
         </div>
       ) : (
         <div className={`columns-2 gap-2 md:gap-6 space-y-2 md:space-y-6 ${isChatActive ? 'xl:columns-2' : 'xl:columns-3'}`}>
           {creators.map((creator, index) => {
+            // Utilisation de la photo choisie par le backend (avatarUrl car on a mappé displayPhoto dessus)
+            // Ou fallback si vraiment vide
             const imageUrl = creator.avatarUrl || FALLBACKS[index % FALLBACKS.length];
+            
             // Pour l'esthétique du screenshot : alternates icons
             const hasVideo = index % 3 === 0;
             const hasStar = index % 2 === 0;
             const isOnline = index % 4 !== 0; // Simulation status online
 
             return (
-              <div key={creator.id} className="break-inside-avoid group cursor-pointer">
+              <div key={creator.virtualId} className="break-inside-avoid group cursor-pointer">
                 <div
                   className="relative rounded-[2.5rem] overflow-hidden mb-3 cursor-pointer"
                   onClick={() => onClickCard?.(creator.username)}
@@ -131,10 +178,17 @@ export const Feed = ({ onOpenChat, isChatActive, onClickCard }: FeedProps) => {
                       <Heart size={14} className="text-red-500" fill="#ef4444" />
                       <span>{creator.subscribersCount > 999 ? (creator.subscribersCount/1000).toFixed(1)+'k' : creator.subscribersCount}</span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <button 
+                      className="flex items-center gap-1 hover:text-pink-600 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenChat(creator.username);
+                      }}
+                      title={`Message ${creator.displayName}`}
+                    >
                       <MessageCircle size={14} />
                       <span>{creator.postsCount}</span>
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -142,7 +196,13 @@ export const Feed = ({ onOpenChat, isChatActive, onClickCard }: FeedProps) => {
           })}
         </div>
       )}
+
+      {/* Sentinel for Infinite Scroll */}
+      <div id="feed-end-sentinel" className="h-20 flex items-center justify-center">
+        {loading && (
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500"></div>
+        )}
+      </div>
     </div>
   );
-
 };

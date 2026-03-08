@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Camera, MapPin, Eye, MessageCircle } from 'lucide-react';
 import api from '../services/api';
+import { SkeletonCard } from '../components/shared/SkeletonCard';
 
 const TAGS = ['All', 'Verified', 'New'];
 
@@ -19,11 +20,12 @@ interface Creator {
 
 interface OutletContextType {
   openChat: (id: string | number) => void;
+  isChatOpen: boolean;
 }
 
 export const ExplorePage = () => {
   const navigate = useNavigate();
-  const { openChat } = useOutletContext<OutletContextType>();
+  const { openChat, isChatOpen } = useOutletContext<OutletContextType>();
   const [activeTag, setActiveTag] = useState('All');
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,13 +79,15 @@ export const ExplorePage = () => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+          <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${isChatOpen ? 'xl:grid-cols-4' : 'xl:grid-cols-5'} gap-4`}>
+            {Array.from({ length: 15 }).map((_, index) => (
+              <SkeletonCard key={`skeleton-${index}`} variant="explore" />
+            ))}
           </div>
         ) : (
           <>
             {/* Grille de résultats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${isChatOpen ? 'xl:grid-cols-4' : 'xl:grid-cols-5'} gap-4`}>
               {filteredCreators.map(creator => (
                 <div 
                   key={creator.id} 

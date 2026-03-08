@@ -185,9 +185,9 @@ function setupMessageHandlers(io: Server, socket: AuthenticatedSocket) {
   });
 
   // Envoyer un message
-  socket.on('message:send', async (data: { conversationId: string; content?: string; mediaId?: string; isPaid?: boolean; price?: number }) => {
+  socket.on('message:send', async (data: { conversationId: string; content?: string; mediaId?: string; isPaid?: boolean; price?: number; isTip?: boolean; tipAmount?: number }) => {
     try {
-      const { conversationId, content, mediaId, isPaid, price } = data;
+      const { conversationId, content, mediaId, isPaid, price, isTip, tipAmount } = data;
 
       // Vérifier la conversation
       const conversation = await prisma.conversation.findFirst({
@@ -209,6 +209,94 @@ function setupMessageHandlers(io: Server, socket: AuthenticatedSocket) {
         return;
       }
 
+      // Logic for pay-per-message if sender is CLIENT
+      let messageFeeCoins = 0;
+      let isPayPerMessage = false;
+      let actualTipValue = 0;
+
+      if (socket.userRole === 'CLIENT' && socket.userId === conversation.clientId) {
+        // --- MESSAGE FEE LOGIC (Skip if it's a gift/tip) ---
+        if (!isTip) {
+          const creator = await prisma.user.findUnique({
+            where: { id: conversation.creatorId },
+            select: { isPayPerMessageEnabled: true, messagePrice: true }
+          });
+
+          if (creator?.isPayPerMessageEnabled && (creator.messagePrice || 0) > 0) {
+            messageFeeCoins = creator.messagePrice || 0;
+            isPayPerMessage = true;
+
+            // Check balance for message fee
+            const client = await prisma.user.findUnique({
+              where: { id: socket.userId },
+              select: { coinBalance: true }
+            });
+
+            if (!client || client.coinBalance < messageFeeCoins) {
+              socket.emit('error', { code: 'INSUFFICIENT_FUNDS', message: 'Crédits insuffisants pour envoyer ce message', required: messageFeeCoins });
+              return;
+            }
+
+            // Deduct from client & Credit creator (80%) for message fee
+            const creatorRevenue = Math.floor(messageFeeCoins * 0.8);
+
+            await prisma.$transaction([
+              prisma.user.update({
+                where: { id: socket.userId },
+                data: { 
+                  coinBalance: { decrement: messageFeeCoins },
+                  totalSpent: { increment: messageFeeCoins }
+                }
+              }),
+              prisma.user.update({
+                where: { id: conversation.creatorId },
+                data: { 
+                  coinBalance: { increment: creatorRevenue },
+                  totalEarned: { increment: creatorRevenue }
+                }
+              })
+            ]);
+          }
+        }
+        
+        // --- GIFT / TIP LOGIC ---
+        if (isTip && tipAmount && tipAmount > 0) {
+           const actualTipCoins = Number(tipAmount);
+           actualTipValue = actualTipCoins;
+           
+           // Check balance for tip
+           const client = await prisma.user.findUnique({
+             where: { id: socket.userId },
+             select: { coinBalance: true }
+           });
+
+           if (!client || client.coinBalance < actualTipCoins) {
+             socket.emit('error', { code: 'INSUFFICIENT_FUNDS', message: 'Crédits insuffisants pour le cadeau.', required: actualTipCoins });
+             return;
+           }
+
+           // Deduct tip and credit creator (80%)
+           const creatorTipRevenue = Math.floor(actualTipCoins * 0.8);
+
+           await prisma.$transaction([
+             prisma.user.update({
+               where: { id: socket.userId },
+               data: { 
+                 coinBalance: { decrement: actualTipCoins },
+                 totalSpent: { increment: actualTipCoins }
+               }
+             }),
+             prisma.user.update({
+               where: { id: conversation.creatorId },
+               data: { 
+                 coinBalance: { increment: creatorTipRevenue },
+                 totalEarned: { increment: creatorTipRevenue }
+               }
+             })
+           ]);
+        }
+      }
+
       // Créer le message en DB
       const rawMessage = await prisma.message.create({
         data: {
@@ -217,8 +305,11 @@ function setupMessageHandlers(io: Server, socket: AuthenticatedSocket) {
           recipientId: socket.userId === conversation.creatorId ? conversation.clientId : conversation.creatorId,
           content: content || null,
           type: mediaId ? 'media' : 'text',
-          isPaid: isPaid || false,
-          price: isPaid && price ? price : null,
+          isPaid: isPayPerMessage,
+          price: isPayPerMessage ? messageFeeCoins : (isPaid && price ? price : null),
+          isUnlocked: isPayPerMessage ? true : false,
+          isTip: !!actualTipValue,
+          tipAmount: actualTipValue || null,
           ...(mediaId && {
             mediaAttachments: {
               create: [{ libraryItemId: mediaId }],
@@ -232,6 +323,40 @@ function setupMessageHandlers(io: Server, socket: AuthenticatedSocket) {
           },
         },
       });
+
+      // If it was a paid message, create the transaction record
+      if (isPayPerMessage && messageFeeCoins > 0) {
+        const creatorRevenue = Math.floor(messageFeeCoins * 0.8);
+        const commission = messageFeeCoins - creatorRevenue;
+        await prisma.transaction.create({
+          data: {
+            userId: socket.userId,
+            type: 'message_fee',
+            amountCoins: messageFeeCoins,
+            commissionCoins: commission,
+            commissionRate: 0.2,
+            status: 'completed',
+            referenceId: rawMessage.id,
+          }
+        });
+      }
+
+      // If it was a gift, create the tip transaction record
+      if (actualTipValue > 0) {
+        const creatorTipRevenue = Math.floor(actualTipValue * 0.8);
+        const commissionTip = actualTipValue - creatorTipRevenue;
+        await prisma.transaction.create({
+          data: {
+            userId: socket.userId,
+            type: 'tip',
+            amountCoins: actualTipValue,
+            commissionCoins: commissionTip,
+            commissionRate: 0.2,
+            status: 'completed',
+            referenceId: rawMessage.id,
+          }
+        });
+      }
 
       // Signer les URLs si média présent
       let message = rawMessage;

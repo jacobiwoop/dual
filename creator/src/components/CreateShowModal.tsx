@@ -9,35 +9,28 @@ const AVAILABILITY = [
 
 const EMOJIS = ['🔥','📞','📸','🎁','💋','🎭','👠','🛁','🎬','💎'];
 
-interface ShowType {
-  emoji: string;
-  title: string;
-  description: string;
-  price: number;
-  duration: string;
-  availability: string;
-}
+import { ShowType } from '@/services/shows';
 
 interface CreateShowModalProps {
   initial?: Partial<ShowType>;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (show: ShowType) => void;
+  onSave: (show: Partial<ShowType>) => void;
 }
 
 export function CreateShowModal({ initial, isOpen, onClose, onSave }: CreateShowModalProps) {
   const [emoji, setEmoji] = useState(initial?.emoji ?? '🔥');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [price, setPrice] = useState(initial?.price ?? 500);
-  const [duration, setDuration] = useState(initial?.duration ?? '30 min');
+  const [priceCredits, setPriceCredits] = useState(initial?.priceCredits ?? 500);
+  const [durationLabel, setDurationLabel] = useState(initial?.durationLabel ?? '30 min');
   const [availability, setAvailability] = useState(initial?.availability ?? 'always');
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     if (!title.trim()) return;
-    onSave({ emoji, title, description, price, duration, availability });
+    onSave({ emoji, title, description, priceCredits, durationLabel, availability });
     onClose();
   };
 
@@ -110,16 +103,16 @@ export function CreateShowModal({ initial, isOpen, onClose, onSave }: CreateShow
                 <label className="block text-sm font-medium text-gray-700 mb-2">Prix (🪙)</label>
                 <input
                   type="number"
-                  value={price}
-                  onChange={e => setPrice(Number(e.target.value))}
+                  value={priceCredits}
+                  onChange={e => setPriceCredits(Number(e.target.value))}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Durée estimée</label>
                 <input
-                  value={duration}
-                  onChange={e => setDuration(e.target.value)}
+                  value={durationLabel}
+                  onChange={e => setDurationLabel(e.target.value)}
                   placeholder="Ex: 30 min"
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />

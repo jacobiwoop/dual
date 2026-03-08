@@ -26,6 +26,13 @@ const PROFILE_SELECT = {
   tattoos: true,
   subscriptionPrice: true,
   subscriptionPricePlus: true,
+  isSubscriptionEnabled: true,
+  isPayPerMessageEnabled: true,
+  messagePrice: true,
+  isSpecialContentEnabled: true,
+  specialContentBasePrice: true,
+  isPrivateGalleryEnabled: true,
+  privateGalleryDefaultPrice: true,
   coinBalance: true,
   totalEarned: true,
   isVerified: true,
@@ -53,9 +60,15 @@ async function signProfileUrls(profile: any) {
   if (p.avatarUrl) p.avatarUrl = await sign(p.avatarUrl);
   if (p.bannerUrl) p.bannerUrl = await sign(p.bannerUrl);
   if (p.profilePhotos) {
-    const photos = JSON.parse(p.profilePhotos);
-    const signedPhotos = await Promise.all(photos.map((u: string) => sign(u)));
-    p.profilePhotos = JSON.stringify(signedPhotos);
+    try {
+      const photos = JSON.parse(p.profilePhotos);
+      if (Array.isArray(photos)) {
+        const signedPhotos = await Promise.all(photos.map((u: string) => sign(u)));
+        p.profilePhotos = JSON.stringify(signedPhotos);
+      }
+    } catch (e) {
+      console.error('Invalid JSON for profilePhotos:', p.profilePhotos);
+    }
   }
   return p;
 }
@@ -84,6 +97,9 @@ export const profileController = {
       age, country, welcomeMessage, subscriberWelcomeMsg,
       categories, tags, profilePhotos,
       height, hairColor, eyeColor, bodyType, tattoos,
+      isSubscriptionEnabled, isPayPerMessageEnabled, messagePrice,
+      isSpecialContentEnabled, specialContentBasePrice,
+      isPrivateGalleryEnabled, privateGalleryDefaultPrice,
     } = req.body;
 
     const creatorId = req.user.userId;
@@ -117,6 +133,13 @@ export const profileController = {
         ...(eyeColor !== undefined && { eyeColor }),
         ...(bodyType !== undefined && { bodyType }),
         ...(tattoos !== undefined && { tattoos }),
+        ...(isSubscriptionEnabled !== undefined && { isSubscriptionEnabled }),
+        ...(isPayPerMessageEnabled !== undefined && { isPayPerMessageEnabled }),
+        ...(messagePrice !== undefined && { messagePrice: Number(messagePrice) }),
+        ...(isSpecialContentEnabled !== undefined && { isSpecialContentEnabled }),
+        ...(specialContentBasePrice !== undefined && { specialContentBasePrice: Number(specialContentBasePrice) }),
+        ...(isPrivateGalleryEnabled !== undefined && { isPrivateGalleryEnabled }),
+        ...(privateGalleryDefaultPrice !== undefined && { privateGalleryDefaultPrice: Number(privateGalleryDefaultPrice) }),
       },
       select: PROFILE_SELECT,
     });

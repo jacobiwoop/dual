@@ -43,6 +43,8 @@ export const messagesController = {
             createdAt: true,
             isRead: true,
             senderId: true,
+            isTip: true,
+            tipAmount: true,
           },
         },
         _count: {
@@ -75,10 +77,23 @@ export const messagesController = {
         ? (await redis.sismember('presence:online', clientId)) === 1
         : false;
 
+      const client = otherParticipant?.user || null;
+      let signedAvatarUrl = client?.avatarUrl || null;
+
+      if (signedAvatarUrl) {
+        try {
+          const key = extractR2Key(signedAvatarUrl);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          signedAvatarUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+        } catch (e) {
+          // Keep original
+        }
+      }
+
       return {
         id: conv.id,
         clientId,
-        client: otherParticipant?.user || null,
+        client: client ? { ...client, avatarUrl: signedAvatarUrl } : null,
         isOnline,
         lastMessage: lastMessage || null,
         unreadCount,

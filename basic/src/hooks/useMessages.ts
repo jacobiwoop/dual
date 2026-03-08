@@ -21,9 +21,8 @@ export interface Message {
     avatarUrl: string | null;
   };
   mediaAttachments?: any[];
-  isPaid: boolean;
-  price?: number;
-  isUnlocked: boolean;
+  isTip?: boolean;
+  tipAmount?: number | null;
 }
 
 /**
@@ -109,7 +108,7 @@ export function useMessages(conversationId: string | null) {
    * Envoyer un message
    */
   const sendMessage = useCallback(
-    (content: string, mediaId?: string) => {
+    (content: string, mediaId?: string, isTip?: boolean, tipAmount?: number) => {
       if (!conversationId || !isConnected) {
         console.warn('Cannot send message: not connected or no conversation');
         return;
@@ -127,6 +126,8 @@ export function useMessages(conversationId: string | null) {
         type: mediaId ? 'media' : 'text',
         isPaid: false,
         isUnlocked: true,
+        isTip: isTip || false,
+        tipAmount: tipAmount || null,
         createdAt: new Date().toISOString()
       };
       
@@ -136,6 +137,8 @@ export function useMessages(conversationId: string | null) {
         conversationId,
         content,
         mediaId,
+        isTip,
+        tipAmount,
       });
 
       // Le vrai message remplacera l'optimistic, ou s'ajoutera et on nettoiera (le cleanup strict sera géré par l'event)
@@ -155,7 +158,14 @@ export function useMessages(conversationId: string | null) {
     [isConnected, emit]
   );
 
-  const [creatorInfo, setCreatorInfo] = useState<{ id: string; username: string; displayName: string; avatarUrl: string | null } | null>(null);
+  const [creatorInfo, setCreatorInfo] = useState<{ 
+    id: string; 
+    username: string; 
+    displayName: string; 
+    avatarUrl: string | null;
+    isPayPerMessageEnabled?: boolean;
+    messagePrice?: number;
+  } | null>(null);
 
   /**
    * Charger les messages initiaux (via REST API)

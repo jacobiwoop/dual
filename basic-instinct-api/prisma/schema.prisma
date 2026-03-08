@@ -42,9 +42,19 @@ model User {
   tattoos    String?
 
   // Paramètres Créateur (si role = CREATOR)
-  subscriptionPrice     Int @default(0) // Prix en pièces
-  subscriptionPricePlus Int @default(0) // Abonnement premium (optionnel) en pièces
-  coinBalance           Int @default(0) // Solde Global en Pièces (créateurs ou clients)
+  subscriptionPrice          Int @default(0) // Prix en pièces
+  subscriptionPricePlus      Int @default(0) // Abonnement premium (optionnel) en pièces
+  
+  // Nouveaux Paramètres Généraux
+  isSubscriptionEnabled      Boolean @default(true)
+  isPayPerMessageEnabled     Boolean @default(false)
+  messagePrice               Int     @default(0)
+  isSpecialContentEnabled    Boolean @default(true)
+  specialContentBasePrice    Int     @default(0)
+  isPrivateGalleryEnabled    Boolean @default(false)
+  privateGalleryDefaultPrice Int     @default(0)
+
+  coinBalance                Int @default(0) // Solde Global en Pièces (créateurs ou clients)
   totalEarned           Int @default(0) // Total gagné (créateurs) en pièces
   totalSpent            Int @default(0) // Total dépensé (clients) en pièces
 

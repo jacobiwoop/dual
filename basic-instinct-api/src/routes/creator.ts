@@ -5,6 +5,7 @@ import { libraryController } from '../controllers/creator/library.controller';
 import { profileController } from '../controllers/creator/profile.controller';
 import { analyticsController } from '../controllers/creator/analytics.controller';
 import { creatorPayoutsController } from '../controllers/creator/payouts.controller';
+import { showsController } from '../controllers/creator/shows.controller';
 import { validateBody, validate } from '../middleware/validate';
 import { messageLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { 
@@ -72,7 +73,18 @@ router.get('/analytics/overview', analyticsController.getOverview);
 router.get('/analytics/revenue', analyticsController.getRevenueChart);
 router.get('/analytics/subscribers', analyticsController.getSubscribersChart);
 router.get('/analytics/top-clients', analyticsController.getTopClients);
+// ====================================
+// STATS & ANALYTICS
+// ====================================
 router.get('/analytics/stats', analyticsController.getStats);
+
+// ====================================
+// DEMANDES SPÉCIALES (SHOWS)
+// ====================================
+router.get('/shows', showsController.getShows);
+router.post('/shows', showsController.createShow);
+router.put('/shows/:id', showsController.updateShow);
+router.delete('/shows/:id', showsController.deleteShow);
 
 // ====================================
 // MEDIA (Upload R2 - Phase 2)

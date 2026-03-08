@@ -111,6 +111,9 @@ export const creatorsController = {
         bodyType: true,
         tattoos: true,
         profilePhotos: true,
+        isSubscriptionEnabled: true,
+        isPayPerMessageEnabled: true,
+        messagePrice: true,
         _count: {
           select: {
             subscriptionsAsCreator: true,
@@ -419,10 +422,19 @@ export const creatorsController = {
     // Vérifier que le créateur existe
     const creator = await prisma.user.findUnique({
       where: { id: id as string, role: 'CREATOR' },
+      select: {
+        isSubscriptionEnabled: true,
+        subscriptionPrice: true,
+        subscriptionPricePlus: true,
+      }
     });
 
     if (!creator) {
       return res.status(404).json({ error: 'Créateur non trouvé' });
+    }
+
+    if (!creator.isSubscriptionEnabled) {
+      return res.status(400).json({ error: "Ce créateur n'accepte pas les abonnements actuellement." });
     }
 
     // Vérifier si déjà abonné
@@ -440,7 +452,7 @@ export const creatorsController = {
     }
 
     // Prix selon tier (déjà en pièces)
-    const priceCoins = tier === 'plus' ? creator.subscriptionPricePlus : creator.subscriptionPrice;
+    const priceCoins = creator.subscriptionPrice || 0;
 
     // Vérifier que le client a assez de pièces
     const client = await prisma.user.findUnique({

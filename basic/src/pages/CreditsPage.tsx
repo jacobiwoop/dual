@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wallet } from 'lucide-react';
 import { PurchaseModal } from '../components/PurchaseModal';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const PACKS = [
   { id: 1, coins: 100,   priceNum: 1,  priceStr: '1€',   bonus: null,     popular: false },
@@ -16,6 +18,22 @@ export const CreditsPage = () => {
   const navigate = useNavigate();
   const [selectedPack, setSelectedPack] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const { updateUser } = useAuth();
+
+  const fetchBalance = async () => {
+    try {
+      const response = await api.get('/api/client/credits/balance');
+      setBalance(response.data.balanceCredits);
+      updateUser({ coinBalance: response.data.balanceCredits });
+    } catch (error) {
+      console.error('Erreur lors du chargement du solde:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchBalance();
+  }, []);
 
   const handleOpenModal = (pack: any) => {
     setSelectedPack(pack);
@@ -43,7 +61,9 @@ export const CreditsPage = () => {
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-10 flex items-center justify-between">
         <div>
           <p className="text-sm text-amber-700 font-medium">Votre solde actuel</p>
-          <p className="text-3xl font-bold text-amber-600">350 🪙</p>
+          <p className="text-3xl font-bold text-amber-600">
+            {balance !== null ? balance.toLocaleString() : '...'} 🪙
+          </p>
         </div>
         <div className="text-4xl">👛</div>
       </div>
@@ -86,7 +106,8 @@ export const CreditsPage = () => {
         onClose={() => setIsModalOpen(false)}
         pack={selectedPack}
         onSuccess={() => {
-          alert("Votre demande d'achat a été envoyée ! Un administrateur va la valider bientôt.");
+          alert("Achat réussi ! Vos pièces ont été ajoutées à votre compte.");
+          fetchBalance(); 
         }}
       />
     </div>

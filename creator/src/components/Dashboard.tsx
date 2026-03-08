@@ -155,7 +155,7 @@ export function Dashboard() {
             <button className="text-sm text-purple-600 font-medium hover:text-purple-700">Voir détails</button>
           </div>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={0}>
               <LineChart data={revenueData.map(d => ({ 
                 name: new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
                 revenus: d.amount 

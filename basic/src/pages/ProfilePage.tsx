@@ -3,7 +3,7 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft, Star, Send, Mic, MessageCircle, Smile, Heart,
   Gift, Users, Paperclip, Crown, Camera, CheckCircle2, Lock,
-  ChevronLeft, ChevronRight, X, Film, User, ImageOff
+  ChevronLeft, ChevronRight, X, Film, User, ImageOff, Loader
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -130,6 +130,30 @@ export const ProfilePage = () => {
   const [viewingItems, setViewingItems] = useState<any[] | null>(null);
   const [viewingIndex, setViewingIndex] = useState<number>(0);
 
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!creatorData) return;
+    if (!confirm(`S'abonner au profil de ${creatorData.displayName} pour ${creatorData.subscriptionPrice || 0}🪙/mois ?`)) return;
+    
+    setIsSubscribing(true);
+    try {
+      const { default: api } = await import('../services/api');
+      await api.post(`/api/client/creators/${creatorData.id}/subscribe`);
+      setIsSubscribed(true);
+      alert('Abonnement validé !');
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        alert(error.response.data.error);
+      } else {
+        alert("Erreur lors de l'abonnement.");
+      }
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
   React.useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -143,6 +167,7 @@ export const ProfilePage = () => {
         setCreatorData(profileRes.data.creator);
         setCreatorPosts(postsRes.data.posts || []);
         setCreatorGalleries(galleriesRes.data.galleries || []);
+        setIsSubscribed(profileRes.data.isSubscribed);
       } catch (err) {
         console.error("Erreur lors de la récupération du créateur", err);
       } finally {
@@ -245,7 +270,37 @@ export const ProfilePage = () => {
                 </div>
               )}
             </div>
+            
+            <div className="pb-2">
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                {creatorData?.displayName || creatorData?.username}
+                {creatorData?.isVerified && <CheckCircle2 size={24} className="text-blue-500" />}
+              </h1>
+              <p className="text-gray-500 font-medium">@{creatorData?.username}</p>
+            </div>
           </div>
+          
+          {creatorData?.isSubscriptionEnabled && (
+            <div className="flex items-center mt-4 md:mt-0 pb-2">
+              <button 
+                onClick={handleSubscribe}
+                disabled={isSubscribing || isSubscribed}
+                className={`py-3 px-8 rounded-full font-bold shadow-lg transition-transform flex items-center justify-center gap-2 w-full md:w-auto ${
+                  isSubscribed 
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                    : 'bg-pink-500 hover:-translate-y-1 hover:shadow-xl text-white'
+                }`}
+              >
+                {isSubscribing ? (
+                  <Loader size={20} className="animate-spin" />
+                ) : isSubscribed ? (
+                  <>Abonné <CheckCircle2 size={18} /></>
+                ) : (
+                  <>S'abonner pour {creatorData.subscriptionPrice || 0} 🪙</>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -333,7 +388,7 @@ export const ProfilePage = () => {
                     value={message}
                     onChange={e => setMessage(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && setMessage('')}
-                    placeholder={`Your message (50 Coins)`}
+                    placeholder={creatorData?.isPayPerMessageEnabled ? `Your message (${creatorData.messagePrice} 🪙)` : "Your message"}
                     className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 bg-gray-50"
                   />
                   <button className="bg-pink-500 hover:bg-pink-600 text-white px-4 rounded-lg transition-colors">

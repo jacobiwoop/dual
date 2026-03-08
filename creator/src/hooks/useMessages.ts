@@ -20,6 +20,8 @@ export interface Message {
     displayName: string;
     avatarUrl: string | null;
   };
+  isTip?: boolean;
+  tipAmount?: number | null;
 }
 
 /**

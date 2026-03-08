@@ -32,6 +32,8 @@ export const clientMessagesController = {
                 avatarUrl: true,
                 role: true,
                 isVerified: true,
+                isPayPerMessageEnabled: true,
+                messagePrice: true,
               },
             },
           },
@@ -47,6 +49,8 @@ export const clientMessagesController = {
             senderId: true,
             isPaid: true,
             isUnlocked: true,
+            isTip: true,
+            tipAmount: true,
             mediaAttachments: {
               include: {
                 libraryItem: true,
@@ -107,10 +111,23 @@ export const clientMessagesController = {
         signedLastMessage = { ...lastMessage, mediaAttachments: signedAtts as any };
       }
 
+      const creator = otherParticipant?.user || null;
+      let signedAvatarUrl = creator?.avatarUrl || null;
+      
+      if (signedAvatarUrl) {
+        try {
+          const key = extractR2Key(signedAvatarUrl);
+          const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+          signedAvatarUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+        } catch (e) {
+          // Keep original url on failure
+        }
+      }
+
       return {
         id: conv.id,
         creatorId: creatorId || null,
-        creator: otherParticipant?.user || null,
+        creator: creator ? { ...creator, avatarUrl: signedAvatarUrl } : null,
         isOnline,
         lastMessage: signedLastMessage,
         unreadCount,
@@ -136,7 +153,14 @@ export const clientMessagesController = {
 
     const creator = await prisma.user.findUnique({
       where: { id: creatorId as string, role: 'CREATOR' },
-      select: { id: true, username: true, displayName: true, avatarUrl: true },
+      select: { 
+        id: true, 
+        username: true, 
+        displayName: true, 
+        avatarUrl: true,
+        isPayPerMessageEnabled: true,
+        messagePrice: true
+      },
     });
 
     if (!creator) {
@@ -228,10 +252,19 @@ export const clientMessagesController = {
       };
     }));
 
+    let signedAvatarUrl = creator?.avatarUrl || null;
+    if (signedAvatarUrl) {
+      try {
+        const key = extractR2Key(signedAvatarUrl);
+        const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+        signedAvatarUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+      } catch (e) {}
+    }
+
     res.json({
       conversationId: conversation.id,
-      creator: creator,
-      messages,
+      creator: creator ? { ...creator, avatarUrl: signedAvatarUrl } : null,
+      messages: messages,
       hasMore: messages.length === Number(limit),
     });
   },
@@ -253,23 +286,37 @@ export const clientMessagesController = {
     // Vérifier que le créateur existe
     const creator = await prisma.user.findUnique({
       where: { id: creatorId as string, role: 'CREATOR' },
+      select: {
+        id: true,
+        isPayPerMessageEnabled: true,
+        messagePrice: true,
+      }
     });
 
     if (!creator) {
       return res.status(404).json({ error: 'Créateur non trouvé' });
     }
 
-    // Si tip, vérifier les crédits (Pièces)
-    if (tipCoins && tipCoins > 0) {
+    let actualTipCoins = tipCoins ? Number(tipCoins) : 0;
+    
+    // Si c'est un cadeau, on ne fait pas payer le message (pay-per-message)
+    let messageFeeCoins = (actualTipCoins > 0) 
+      ? 0 
+      : (creator.isPayPerMessageEnabled ? (creator.messagePrice || 0) : 0);
+      
+    let totalRequiredCoins = actualTipCoins + messageFeeCoins;
+
+    // Vérifier les crédits (Pièces)
+    if (totalRequiredCoins > 0) {
       const client = await prisma.user.findUnique({
         where: { id: clientId },
         select: { coinBalance: true },
       });
 
-      if (!client || client.coinBalance < tipCoins) {
+      if (!client || client.coinBalance < totalRequiredCoins) {
         return res.status(400).json({
           error: 'Crédits insuffisants',
-          required: tipCoins,
+          required: totalRequiredCoins,
           available: client?.coinBalance || 0,
         });
       }
@@ -308,8 +355,11 @@ export const clientMessagesController = {
         senderId: clientId as string,
         recipientId: creatorId as string,
         content: content || null,
-        isTip: !!tipCoins,
-        tipAmount: tipCoins || null,
+        isTip: !!actualTipCoins,
+        tipAmount: actualTipCoins || null,
+        isPaid: messageFeeCoins > 0,
+        price: messageFeeCoins > 0 ? messageFeeCoins : null,
+        isUnlocked: messageFeeCoins > 0,
       },
       include: {
         sender: {
@@ -323,39 +373,64 @@ export const clientMessagesController = {
       },
     });
 
-    // Si tip, traiter le paiement
-    if (tipCoins && tipCoins > 0) {
-      const tipAmount = tipCoins;
-      const creatorGroupPiece = Math.floor(tipAmount * 0.8); // 80% après commission
-      const commissionGroupPiece = tipAmount - creatorGroupPiece;
+    // Traiter les paiements en une seule transaction Prisma si possible, 
+    // ou manuellement dans le script. On fait plusieurs queries ici.
+    if (totalRequiredCoins > 0) {
+      const creatorTip = Math.floor(actualTipCoins * 0.8);
+      const commissionTip = actualTipCoins - creatorTip;
+      
+      const creatorFee = Math.floor(messageFeeCoins * 0.8);
+      const commissionFee = messageFeeCoins - creatorFee;
 
+      const totalCreatorRevenue = creatorTip + creatorFee;
+
+      // Débiter le client
       await prisma.user.update({
         where: { id: clientId },
         data: {
-          coinBalance: { decrement: tipAmount },
-          totalSpent: { increment: tipAmount },
+          coinBalance: { decrement: totalRequiredCoins },
+          totalSpent: { increment: totalRequiredCoins },
         },
       });
 
+      // Créditer le créateur
       await prisma.user.update({
         where: { id: creatorId as string },
         data: {
-          coinBalance: { increment: creatorGroupPiece },
-          totalEarned: { increment: creatorGroupPiece },
+          coinBalance: { increment: totalCreatorRevenue },
+          totalEarned: { increment: totalCreatorRevenue },
         },
       });
 
-      await prisma.transaction.create({
-        data: {
-          userId: clientId,
-          type: 'tip',
-          amountCoins: tipAmount,
-          commissionCoins: commissionGroupPiece,
-          commissionRate: 0.2,
-          status: 'completed',
-          referenceId: message.id,
-        },
-      });
+      // Transaction du tip
+      if (actualTipCoins > 0) {
+        await prisma.transaction.create({
+          data: {
+            userId: clientId,
+            type: 'tip',
+            amountCoins: actualTipCoins,
+            commissionCoins: commissionTip,
+            commissionRate: 0.2,
+            status: 'completed',
+            referenceId: message.id,
+          },
+        });
+      }
+
+      // Transaction du message payant
+      if (messageFeeCoins > 0) {
+        await prisma.transaction.create({
+          data: {
+            userId: clientId,
+            type: 'message_fee', // Nouveau type arbitraire pour le suivi
+            amountCoins: messageFeeCoins,
+            commissionCoins: commissionFee,
+            commissionRate: 0.2,
+            status: 'completed',
+            referenceId: message.id,
+          },
+        });
+      }
     }
 
     await prisma.conversation.update({

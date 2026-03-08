@@ -14,9 +14,7 @@ export const clientPaymentsController = {
       coinsRequested, 
       amountPaidRaw, 
       currency = 'EUR', 
-      paymentMethod, 
-      transactionId, 
-      proofImageUrl 
+      paymentMethod
     } = req.body;
 
     // Validation
@@ -30,24 +28,41 @@ export const clientPaymentsController = {
       return res.status(400).json({ error: 'Une méthode de paiement est requise' });
     }
 
-    // Créer la demande
-    const request = await prisma.purchaseRequest.create({
-      data: {
-        clientId,
-        coinsRequested,
-        amountPaidRaw,
-        currency,
-        paymentMethod,
-        transactionId: transactionId || null,
-        proofImageUrl: proofImageUrl || null,
-        status: 'pending',
-      },
+    // Créer la demande, la transaction et mettre à jour le solde dans la même transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const request = await tx.purchaseRequest.create({
+        data: {
+          clientId,
+          coinsRequested,
+          amountPaidRaw,
+          currency,
+          paymentMethod,
+          status: 'approved', // Auto-approuvé
+        },
+      });
+
+      const transaction = await tx.transaction.create({
+        data: {
+          amountCoins: coinsRequested,
+          type: 'credit_purchase',
+          status: 'completed',
+          userId: clientId,
+          paymentMethod: paymentMethod,
+        },
+      });
+
+      await tx.user.update({
+        where: { id: clientId },
+        data: { coinBalance: { increment: coinsRequested } },
+      });
+
+      return { request, transaction };
     });
 
     res.status(201).json({
       success: true,
-      request,
-      message: 'Demande d\'achat envoyée. Elle sera traitée par un administrateur sous peu.',
+      request: result.request,
+      message: 'Achat réussi ! Vos pièces ont été ajoutées à votre compte.',
     });
   },
 

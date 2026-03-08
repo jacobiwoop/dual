@@ -1,15 +1,18 @@
-import { useState } from 'react';
-import { Bell, Shield, CreditCard, MessageSquare, Zap, ChevronRight, ToggleLeft, ToggleRight, Plus, Trash2, Edit2, UserX, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Shield, CreditCard, MessageSquare, Zap, ChevronRight, ToggleLeft, ToggleRight, Plus, Trash2, Edit2, UserX, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+import { showsService, ShowType } from '@/services/shows';
 import { AutoMessageModal } from '@/components/AutoMessageModal';
 import { CreateShowModal } from '@/components/CreateShowModal';
 import { WithdrawModal } from '@/components/WithdrawModal';
 
 export function Settings() {
   const { user } = useAuth();
-  const [activeSection, setActiveSection] = useState('auto-messages');
+  const [activeSection, setActiveSection] = useState('general');
 
   const sections = [
+    { id: 'general', label: 'Général', icon: SettingsIcon },
     { id: 'auto-messages', label: 'Messages automatiques', icon: MessageSquare },
     { id: 'special-requests', label: 'Demandes spéciales', icon: Zap },
     { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -19,7 +22,6 @@ export function Settings() {
   ];
 
   const [isAutoMsgModalOpen, setIsAutoMsgModalOpen] = useState(false);
-  const [isShowModalOpen, setIsShowModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
 
   return (
@@ -46,8 +48,9 @@ export function Settings() {
 
       {/* Content Area */}
       <div className="lg:col-span-3 space-y-6">
+        {activeSection === 'general' && <GeneralSettings />}
         {activeSection === 'auto-messages' && <AutoMessagesSettings onOpenModal={() => setIsAutoMsgModalOpen(true)} />}
-        {activeSection === 'special-requests' && <SpecialRequestsSettings onOpenModal={() => setIsShowModalOpen(true)} />}
+        {activeSection === 'special-requests' && <SpecialRequestsSettings />}
         {activeSection === 'notifications' && <NotificationsSettings />}
         {activeSection === 'privacy' && <PrivacySettings />}
         {activeSection === 'payments' && <PaymentsSettings onWithdraw={() => setIsWithdrawModalOpen(true)} />}
@@ -56,7 +59,6 @@ export function Settings() {
 
       {/* Modals */}
       <AutoMessageModal isOpen={isAutoMsgModalOpen} onClose={() => setIsAutoMsgModalOpen(false)} onSave={(m) => console.log('AutoMsg:', m)} />
-      <CreateShowModal isOpen={isShowModalOpen} onClose={() => setIsShowModalOpen(false)} onSave={(s) => console.log('Show:', s)} />
       <WithdrawModal 
          isOpen={isWithdrawModalOpen} 
          onClose={() => setIsWithdrawModalOpen(false)} 
@@ -67,6 +69,162 @@ export function Settings() {
            window.location.reload();
          }}
       />
+    </div>
+  );
+}
+
+function GeneralSettings() {
+  const [settings, setSettings] = useState({
+    isSubscriptionEnabled: true,
+    subscriptionPrice: 0,
+    isPayPerMessageEnabled: false,
+    messagePrice: 0,
+    isSpecialContentEnabled: true,
+    specialContentBasePrice: 0,
+    isPrivateGalleryEnabled: false,
+    privateGalleryDefaultPrice: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await api.get('/api/creator/profile');
+        if (data.profile) {
+          setSettings({
+            isSubscriptionEnabled: data.profile.isSubscriptionEnabled ?? true,
+            subscriptionPrice: data.profile.subscriptionPrice ?? 0,
+            isPayPerMessageEnabled: data.profile.isPayPerMessageEnabled ?? false,
+            messagePrice: data.profile.messagePrice ?? 0,
+            isSpecialContentEnabled: data.profile.isSpecialContentEnabled ?? true,
+            specialContentBasePrice: data.profile.specialContentBasePrice ?? 0,
+            isPrivateGalleryEnabled: data.profile.isPrivateGalleryEnabled ?? false,
+            privateGalleryDefaultPrice: data.profile.privateGalleryDefaultPrice ?? 0,
+          });
+        }
+      } catch (error) {
+        console.error('Erreur chargement profil', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.put('/api/creator/profile', settings);
+      alert('Paramètres enregistrés !');
+    } catch (error) {
+      console.error('Erreur sauvegarde', error);
+      alert('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateSetting = (key: string, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  if (loading) return <div className="p-8 text-gray-500">Chargement...</div>;
+
+  return (
+    <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-xl font-bold text-gray-900">Paramètres Généraux</h2>
+        <button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+        >
+          {saving ? 'Enregistrement...' : 'Enregistrer'}
+        </button>
+      </div>
+
+      <div className="space-y-8">
+        
+        {/* Abonnements */}
+        <div className="flex flex-col gap-4 pb-8 border-b border-gray-100">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">🌟 Abonnements (VIP)</h3>
+              <p className="text-sm text-gray-500 mt-1">Autoriser les clients à s'abonner mensuellement à votre profil.</p>
+            </div>
+            <button 
+              onClick={() => updateSetting('isSubscriptionEnabled', !settings.isSubscriptionEnabled)}
+              className={`text-3xl transition-colors ${settings.isSubscriptionEnabled ? 'text-emerald-500' : 'text-gray-300'}`}
+            >
+              {settings.isSubscriptionEnabled ? <ToggleRight /> : <ToggleLeft />}
+            </button>
+          </div>
+          {settings.isSubscriptionEnabled && (
+            <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100 w-fit">
+              <span className="text-sm font-semibold text-gray-700">Prix mensuel:</span>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  min="0"
+                  value={settings.subscriptionPrice} 
+                  onChange={(e) => updateSetting('subscriptionPrice', Number(e.target.value))}
+                  className="w-24 pl-3 pr-8 py-1.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-purple-400"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 text-sm">🪙</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Messages Payants */}
+        <div className="flex flex-col gap-4 pb-8 border-b border-gray-100">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">💬 Messages Payants (Pay-per-message)</h3>
+              <p className="text-sm text-gray-500 mt-1">Faire payer chaque message privé envoyé par un client non-abonné.</p>
+            </div>
+            <button 
+              onClick={() => updateSetting('isPayPerMessageEnabled', !settings.isPayPerMessageEnabled)}
+              className={`text-3xl transition-colors ${settings.isPayPerMessageEnabled ? 'text-emerald-500' : 'text-gray-300'}`}
+            >
+              {settings.isPayPerMessageEnabled ? <ToggleRight /> : <ToggleLeft />}
+            </button>
+          </div>
+          {settings.isPayPerMessageEnabled && (
+            <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100 w-fit">
+              <span className="text-sm font-semibold text-gray-700">Prix par message:</span>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  min="0"
+                  value={settings.messagePrice} 
+                  onChange={(e) => updateSetting('messagePrice', Number(e.target.value))}
+                  className="w-24 pl-3 pr-8 py-1.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-purple-400"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 text-sm">🪙</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Contenu Spécial */}
+        <div className="flex flex-col gap-4 pb-8">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">🎬 Contenu Spécial (Show)</h3>
+              <p className="text-sm text-gray-500 mt-1">Autoriser les clients à vous envoyer des demandes personnalisées.</p>
+            </div>
+            <button 
+              onClick={() => updateSetting('isSpecialContentEnabled', !settings.isSpecialContentEnabled)}
+              className={`text-3xl transition-colors ${settings.isSpecialContentEnabled ? 'text-emerald-500' : 'text-gray-300'}`}
+            >
+              {settings.isSpecialContentEnabled ? <ToggleRight /> : <ToggleLeft />}
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
@@ -107,34 +265,116 @@ function AutoMessagesSettings({ onOpenModal }: { onOpenModal: () => void }) {
   );
 }
 
-function SpecialRequestsSettings({ onOpenModal }: { onOpenModal: () => void }) {
+function SpecialRequestsSettings() {
+  const [shows, setShows] = useState<ShowType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingShow, setEditingShow] = useState<ShowType | undefined>(undefined);
+
+  const fetchShows = async () => {
+    try {
+      const data = await showsService.getShows();
+      setShows(data);
+    } catch (error) {
+      console.error('Error fetching shows', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShows();
+  }, []);
+
+  const handleToggle = async (show: ShowType) => {
+    try {
+      await showsService.updateShow(show.id, { isActive: !show.isActive });
+      setShows(shows.map(s => s.id === show.id ? { ...s, isActive: !show.isActive } : s));
+    } catch (error) {
+      console.error('Error toggling show', error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Es-tu sûr de vouloir supprimer cette demande ?')) return;
+    try {
+      await showsService.deleteShow(id);
+      setShows(shows.filter(s => s.id !== id));
+    } catch (error) {
+      console.error('Error deleting show', error);
+    }
+  };
+
+  const handleSave = async (showData: any) => {
+    try {
+      if (editingShow) {
+        await showsService.updateShow(editingShow.id, showData);
+      } else {
+        await showsService.createShow(showData);
+      }
+      fetchShows();
+      setIsModalOpen(false);
+      setEditingShow(undefined);
+    } catch (error) {
+      console.error('Error saving show', error);
+      alert('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const openEditModal = (show: ShowType) => {
+    setEditingShow(show);
+    setIsModalOpen(true);
+  };
+
+  const openCreateModal = () => {
+    setEditingShow(undefined);
+    setIsModalOpen(true);
+  };
+
+  if (loading) return <div className="p-8 text-gray-500">Chargement...</div>;
+
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-900">Demandes Spéciales</h2>
-        <button onClick={onOpenModal} className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors">
+        <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors">
           <Plus size={16} /> Ajouter un type
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
-          { title: '🔥 Scène hot', price: 1200, active: true },
-          { title: '📞 Appel Privé', price: 400, active: true },
-          { title: '📸 Photos pieds', price: 500, active: false },
-          { title: '🎁 Vidéo dédicacée', price: 300, active: true },
-        ].map((req, i) => (
-          <div key={i} className="p-4 border border-gray-100 rounded-2xl flex justify-between items-center hover:shadow-md transition-all">
-            <div>
-              <h3 className="font-bold text-gray-900">{req.title}</h3>
-              <p className="text-sm text-gray-500">{req.price} 🪙</p>
+        {shows.map((show) => (
+          <div key={show.id} className="p-4 border border-gray-100 rounded-2xl flex justify-between items-center hover:shadow-md transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">{show.emoji || '🔥'}</div>
+              <div>
+                <h3 className="font-bold text-gray-900">{show.title}</h3>
+                <p className="text-sm text-gray-500">{show.priceCredits} 🪙 {show.durationLabel && `• ${show.durationLabel}`}</p>
+              </div>
             </div>
-            <button className={`text-2xl ${req.active ? 'text-emerald-500' : 'text-gray-300'}`}>
-              {req.active ? <ToggleRight /> : <ToggleLeft />}
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => openEditModal(show)} className="p-2 text-gray-400 hover:text-purple-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                <Edit2 size={16} />
+              </button>
+              <button onClick={() => handleDelete(show.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                <Trash2 size={16} />
+              </button>
+              <button onClick={() => handleToggle(show)} className={`text-2xl ml-2 ${show.isActive ? 'text-emerald-500' : 'text-gray-300'}`}>
+                {show.isActive ? <ToggleRight /> : <ToggleLeft />}
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      {isModalOpen && (
+        <CreateShowModal 
+          initial={editingShow} 
+          isOpen={isModalOpen} 
+          onClose={() => { setIsModalOpen(false); setEditingShow(undefined); }} 
+          onSave={handleSave} 
+        />
+      )}
     </div>
   );
 }

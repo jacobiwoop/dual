@@ -246,7 +246,7 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
     id: realConv.client.id,
     username: realConv.client.username,
     displayName: realConv.client.displayName || realConv.client.username,
-    avatar: realConv.client.avatarUrl || `https://ui-avatars.com/api/?name=${realConv.client.username}&background=7c3aed&color=fff`,
+    avatar: realConv.client.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(realConv.client.displayName || realConv.client.username)}&background=7c3aed&color=fff`,
     isOnline: realConv?.isOnline ?? false,
     subscriptionTier: 'Normal', // TODO: Fetch real tier
     totalSpent: 0,              // TODO: Fetch real stats
@@ -414,6 +414,7 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
                 <div className={`rounded-2xl shadow-sm text-sm overflow-hidden ${
                   isMe
                     ? 'bg-purple-600 text-white rounded-tr-none'
+                    : msg.isTip ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 border border-yellow-400 shadow-yellow-200 shadow-lg text-yellow-900 rounded-tl-none' 
                     : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
                 }`}>
                   
@@ -450,13 +451,13 @@ export function Messages({ selectedConversationId, onSelectConversation, realCon
 
                   {/* Texte (optionnel si il y a aussi un media) */}
                   {msg.content && (
-                    <div className="px-4 py-2.5 leading-relaxed whitespace-pre-wrap">
+                    <div className={`px-4 py-2.5 leading-relaxed whitespace-pre-wrap ${!isMe && msg.isTip ? 'font-bold text-center text-lg drop-shadow-sm' : ''}`}>
                       {msg.content}
                     </div>
                   )}
                 </div>
 
-                <span className="text-[10px] text-gray-400 mt-1 px-1">
+                <span className={`text-[10px] mt-1 px-1 ${!isMe && msg.isTip ? 'text-yellow-700 font-medium' : 'text-gray-400'}`}>
                   {format(msg.createdAt ? new Date(msg.createdAt) : new Date(), 'HH:mm')}
                 </span>
               </div>

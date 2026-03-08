@@ -1,5 +1,6 @@
-import { Search, MessageCircle, User, Menu } from 'lucide-react';
+import { Search, MessageCircle, User as UserIcon, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
   onOpenMobileMenu: () => void;
@@ -9,6 +10,8 @@ interface HeaderProps {
 
 export const Header = ({ onOpenMobileMenu, onToggleChat }: HeaderProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
   return (
     <header className="flex items-center justify-between py-6 px-8 h-[92px] border-b border-gray-100 bg-white sticky top-0 z-10">
 
@@ -41,13 +44,13 @@ export const Header = ({ onOpenMobileMenu, onToggleChat }: HeaderProps) => {
           className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-semibold text-sm px-3 py-1.5 rounded-full transition-colors"
         >
           <span className="text-base leading-none">🪙</span>
-          <span>850</span>
+          <span>{user?.coinBalance !== undefined ? user.coinBalance : 0}</span>
         </button>
         <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
           <Search size={22} className="text-gray-600" />
         </button>
         <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <User size={22} className="text-gray-600" />
+          <UserIcon size={22} className="text-gray-600" />
         </button>
         <button
           onClick={onToggleChat}
